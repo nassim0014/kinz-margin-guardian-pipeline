@@ -13,7 +13,7 @@ USER airflow
 # Install ONLY the extra Python packages the DAGs need.
 # Do NOT install apache-airflow here — it's already in the image.
 COPY requirements-airflow.txt /tmp/requirements-airflow.txt
-RUN pip install --no-cache-dir --user /tmp/requirements-airflow.txt
+RUN pip install --no-cache-dir -r /tmp/requirements-airflow.txt
 
 # Ensure the airflow binary is in PATH
 ENV PATH="/home/airflow/.local/bin:${PATH}"

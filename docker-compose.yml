@@ -75,6 +75,7 @@ services:
       AIRFLOW__WEBSERVER__SECRET_KEY: "kinz-guardian-secret"
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-kinz_guardian}:${POSTGRES_PASSWORD:-change_me_in_prod}@postgres:5432/${POSTGRES_DB:-margin_guardian}
       SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-}
+      PYTHONPATH: "/opt/airflow"
     ports:
       - "8080:8080"
     volumes:
@@ -109,6 +110,7 @@ services:
       AIRFLOW__CORE__FERNET_KEY: ""
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-kinz_guardian}:${POSTGRES_PASSWORD:-change_me_in_prod}@postgres:5432/${POSTGRES_DB:-margin_guardian}
       SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-}
+      PYTHONPATH: "/opt/airflow"
     volumes:
       - ./airflow/dags:/opt/airflow/dags:ro
       - ./airflow/plugins:/opt/airflow/plugins:ro
