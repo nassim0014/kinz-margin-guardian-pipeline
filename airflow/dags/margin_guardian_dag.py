@@ -10,13 +10,16 @@ Daily pipeline:
   6. Cleanup old price data (>90 days)
 
 Schedule: 0 6 * * * (daily at 06:00 UTC = 07:00 Africa/Tunis)
+
+All task callables use Airflow's execution date (context['ds']) instead
+of date.today() to ensure correct data alignment with the DAG run.
 """
 from __future__ import annotations
 
 import logging
 import os
 import sys
-from datetime import datetime, timedelta, date
+from datetime import datetime, timedelta, date, timezone
 
 import pandas as pd
 from sqlalchemy import create_engine, text
@@ -48,6 +51,19 @@ def get_engine():
     return create_engine(DATABASE_URL)
 
 
+def get_execution_date(context: dict) -> date:
+    """Extract the execution date from Airflow context.
+
+    Falls back to date.today() if context['ds'] is not available
+    (e.g., when testing outside Airflow).
+    """
+    ds = context.get("ds")
+    if ds:
+        return datetime.strptime(ds, "%Y-%m-%d").date()
+    logger.warning("No 'ds' in context — falling back to date.today()")
+    return date.today()
+
+
 # ---------------------------------------------------------------------
 # Task 1: Ingest competitor prices (simulated)
 # ---------------------------------------------------------------------
@@ -61,7 +77,7 @@ def ingest_competitor_prices(**context):
     np.random.seed(42)
 
     engine = get_engine()
-    today = date.today()
+    exec_date = get_execution_date(context)
 
     # Load active products
     products = pd.read_sql(
@@ -80,7 +96,7 @@ def ingest_competitor_prices(**context):
         competitor_price = round(base_price * (1 + noise), 3)
         prices.append({
             "product_id": int(row["id"]),
-            "price_date": today,
+            "price_date": exec_date,
             "competitor_price_tnd": competitor_price,
             "source": "simulated",
         })
@@ -89,14 +105,14 @@ def ingest_competitor_prices(**context):
 
     # Upsert into daily_prices (avoid duplicates for same product + date)
     with engine.begin() as conn:
-        # Delete existing entries for today (idempotent re-run)
+        # Delete existing entries for this execution date (idempotent re-run)
         conn.execute(
             text("DELETE FROM daily_prices WHERE price_date = :d"),
-            {"d": today},
+            {"d": exec_date},
         )
         df.to_sql("daily_prices", conn, if_exists="append", index=False)
 
-    logger.info(f"Ingested {len(df)} competitor prices for {today}")
+    logger.info(f"Ingested {len(df)} competitor prices for {exec_date}")
     return len(df)
 
 
@@ -106,21 +122,26 @@ def ingest_competitor_prices(**context):
 def validate_ingested_data(**context):
     """Validate that all ingested prices > 0 and all product COGS > 0.
 
+    Checks the last 30 days of data (not just the execution date) to
+    be resilient to backfill scenarios and manual seed scripts.
+
     Uses ShortCircuitOperator: returns False to skip downstream tasks
     if data quality check fails (instead of crashing the DAG).
     """
     engine = get_engine()
-    today = date.today()
+    exec_date = get_execution_date(context)
 
-    # Check daily_prices for today
+    # Check daily_prices — look at the last 30 days for robustness
     prices_df = pd.read_sql(
-        "SELECT * FROM daily_prices WHERE price_date = :d",
+        text("SELECT * FROM daily_prices WHERE price_date >= CURRENT_DATE - INTERVAL '30 days'"),
         engine,
-        params={"d": today},
     )
 
     if prices_df.empty:
-        logger.error("DATA QUALITY FAIL: No prices ingested for today — skipping margin calculation.")
+        logger.error(
+            f"DATA QUALITY FAIL: No prices found in the last 30 days "
+            f"(execution date: {exec_date}) — skipping margin calculation."
+        )
         return False
 
     # Check competitor_price > 0
@@ -132,12 +153,13 @@ def validate_ingested_data(**context):
         )
         return False
 
-    # Check that all products with prices today have COGS > 0
+    # Check that all products with prices have COGS > 0
     products_df = pd.read_sql(
-        "SELECT id, name, cogs_tnd FROM products WHERE active = true AND id IN "
-        "(SELECT product_id FROM daily_prices WHERE price_date = :d)",
+        text(
+            "SELECT id, name, cogs_tnd FROM products WHERE active = true AND id IN "
+            "(SELECT product_id FROM daily_prices WHERE price_date >= CURRENT_DATE - INTERVAL '30 days')"
+        ),
         engine,
-        params={"d": today},
     )
 
     invalid_cogs = products_df[products_df["cogs_tnd"] <= 0]
@@ -149,8 +171,8 @@ def validate_ingested_data(**context):
         return False
 
     logger.info(
-        f"DATA QUALITY PASS: {len(prices_df)} prices validated, "
-        f"{len(products_df)} products with valid COGS."
+        f"DATA QUALITY PASS: {len(prices_df)} prices validated (last 30 days), "
+        f"{len(products_df)} products with valid COGS. Execution date: {exec_date}"
     )
     return True
 
@@ -159,24 +181,45 @@ def validate_ingested_data(**context):
 # Task 3: Calculate margins
 # ---------------------------------------------------------------------
 def calculate_margins_task(**context):
-    """Calculate B2B + B2C margins for all products with today's prices."""
+    """Calculate B2B + B2C margins for all products with prices on the execution date."""
     engine = get_engine()
-    today = date.today()
+    exec_date = get_execution_date(context)
 
     query = text("""
         SELECT p.id, p.name, p.cogs_tnd, p.alert_threshold_pct,
-               dp.competitor_price_tnd
+               dp.competitor_price_tnd, dp.price_date
         FROM products p
         JOIN daily_prices dp ON p.id = dp.product_id
         WHERE dp.price_date = :d AND p.active = true
     """)
 
     with engine.connect() as conn:
-        result = conn.execute(query, {"d": today})
+        result = conn.execute(query, {"d": exec_date})
         rows = result.fetchall()
 
     if not rows:
-        logger.warning("No data to calculate margins for.")
+        # Fallback: if no data for the exact execution date, use the most recent prices
+        logger.warning(
+            f"No prices found for execution date {exec_date}. "
+            f"Falling back to most recent prices for each product."
+        )
+        fallback_query = text("""
+            SELECT p.id, p.name, p.cogs_tnd, p.alert_threshold_pct,
+                   dp.competitor_price_tnd, dp.price_date
+            FROM products p
+            JOIN daily_prices dp ON p.id = dp.product_id
+            WHERE p.active = true
+              AND dp.price_date = (
+                  SELECT MAX(price_date) FROM daily_prices
+                  WHERE product_id = p.id
+              )
+        """)
+        with engine.connect() as conn:
+            result = conn.execute(fallback_query)
+            rows = result.fetchall()
+
+    if not rows:
+        logger.warning("No data to calculate margins for — even with fallback.")
         return 0
 
     margin_records = []
@@ -186,6 +229,8 @@ def calculate_margins_task(**context):
         cogs = float(row[2])
         threshold = float(row[3]) if row[3] else DEFAULT_ALERT_THRESHOLD_PCT
         competitor_price = float(row[4])
+        # Use the actual price_date from the row (may differ from exec_date in fallback)
+        calc_date = row[5] if len(row) > 5 else exec_date
 
         b2c_price, b2b_price, b2c_margin, b2b_margin = calculate_margins(
             cogs, competitor_price, B2B_DISCOUNT_FACTOR
@@ -193,7 +238,7 @@ def calculate_margins_task(**context):
 
         margin_records.append({
             "product_id": product_id,
-            "calc_date": today,
+            "calc_date": calc_date,
             "b2c_margin_pct": b2c_margin,
             "b2b_margin_pct": b2b_margin,
             "b2c_price_tnd": b2c_price,
@@ -204,14 +249,14 @@ def calculate_margins_task(**context):
     df = pd.DataFrame(margin_records)
 
     with engine.begin() as conn:
-        # Delete existing for today (idempotent)
+        # Delete existing for the execution date (idempotent)
         conn.execute(
             text("DELETE FROM margin_history WHERE calc_date = :d"),
-            {"d": today},
+            {"d": exec_date},
         )
         df.to_sql("margin_history", conn, if_exists="append", index=False)
 
-    logger.info(f"Calculated margins for {len(df)} products on {today}")
+    logger.info(f"Calculated margins for {len(df)} products on {exec_date}")
     return len(df)
 
 
@@ -221,8 +266,9 @@ def calculate_margins_task(**context):
 def check_thresholds_task(**context):
     """Check if any margins are below threshold — create alert records."""
     engine = get_engine()
-    today = date.today()
+    exec_date = get_execution_date(context)
 
+    # Try execution date first, then fall back to the latest available
     query = text("""
         SELECT mh.product_id, p.name, mh.b2c_margin_pct, mh.b2b_margin_pct,
                p.alert_threshold_pct, mh.cogs_tnd, mh.b2c_price_tnd, mh.b2b_price_tnd
@@ -232,8 +278,31 @@ def check_thresholds_task(**context):
     """)
 
     with engine.connect() as conn:
-        result = conn.execute(query, {"d": today})
+        result = conn.execute(query, {"d": exec_date})
         rows = result.fetchall()
+
+    if not rows:
+        # Fallback: use the latest margin_history entries
+        logger.warning(
+            f"No margin history for execution date {exec_date}. "
+            f"Falling back to most recent margins."
+        )
+        fallback_query = text("""
+            SELECT mh.product_id, p.name, mh.b2c_margin_pct, mh.b2b_margin_pct,
+                   p.alert_threshold_pct, mh.cogs_tnd, mh.b2c_price_tnd, mh.b2b_price_tnd
+            FROM margin_history mh
+            JOIN products p ON mh.product_id = p.id
+            WHERE mh.calc_date = (SELECT MAX(calc_date) FROM margin_history)
+        """)
+        with engine.connect() as conn:
+            result = conn.execute(fallback_query)
+            rows = result.fetchall()
+
+    if not rows:
+        logger.warning("No margin history found at all — skipping threshold check.")
+        ti = context["ti"]
+        ti.xcom_push(key="alert_data", value=[])
+        return 0
 
     alerts_created = 0
     alert_data = []  # Store for the Slack task
@@ -285,14 +354,13 @@ def check_thresholds_task(**context):
         alerts_db["notified"] = False
 
         with engine.begin() as conn:
-            alerts_db.to_sql("alerts", conn, ifexists="append", index=False)
+            alerts_db.to_sql("alerts", conn, if_exists="append", index=False)
 
     # Push alert data to XCom for the Slack task
-    from airflow.models import TaskInstance
     ti = context["ti"]
     ti.xcom_push(key="alert_data", value=alert_data)
 
-    logger.info(f"Created {alerts_created} alerts for {today}")
+    logger.info(f"Created {alerts_created} alerts for {exec_date}")
     return alerts_created
 
 
@@ -300,7 +368,7 @@ def check_thresholds_task(**context):
 # Task 5: Send Slack alerts
 # ---------------------------------------------------------------------
 def send_slack_alerts_task(**context):
-    """Send Slack notifications for all alerts created today."""
+    """Send Slack notifications for all alerts created in this run."""
     ti = context["ti"]
     alert_data = ti.xcom_pull(key="alert_data", task_ids="check_thresholds")
 
@@ -326,11 +394,11 @@ def send_slack_alerts_task(**context):
 
     # Mark alerts as notified
     engine = get_engine()
-    today = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M")
+    now_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M")
     with engine.begin() as conn:
         conn.execute(
             text("UPDATE alerts SET notified = true WHERE notified = false AND alert_date >= :d"),
-            {"d": today},
+            {"d": now_str},
         )
 
     logger.info(f"Sent {sent_count} Slack alerts")
@@ -343,7 +411,8 @@ def send_slack_alerts_task(**context):
 def cleanup_old_prices_task(**context):
     """Delete daily_prices older than PRICE_RETENTION_DAYS (default 90)."""
     engine = get_engine()
-    cutoff = date.today() - timedelta(days=PRICE_RETENTION_DAYS)
+    exec_date = get_execution_date(context)
+    cutoff = exec_date - timedelta(days=PRICE_RETENTION_DAYS)
 
     with engine.begin() as conn:
         result = conn.execute(
