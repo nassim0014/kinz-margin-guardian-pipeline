@@ -8,7 +8,7 @@ ROOT = Path(__file__).resolve().parent.parent
 
 DATABASE_URL = os.getenv(
     "DATABASE_URL",
-    "postgresql+psycopg://kinz_guardian:change_me_in_prod@localhost:5432/margin_guardian",
+    "postgresql+psycopg2://kinz_guardian:change_me_in_prod@localhost:5432/margin_guardian",
 )
 
 JWT_SECRET = os.getenv("JWT_SECRET", "dev-only-change-me-in-production-please")
