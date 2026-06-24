@@ -8,18 +8,21 @@ services:
   postgres:
     image: postgres:16-alpine
     container_name: kinz-pg
+    env_file: .env
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-kinz_guardian}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me_in_prod}
       POSTGRES_DB: ${POSTGRES_DB:-margin_guardian}
     volumes:
       - pgdata:/var/lib/postgresql/data
-      - ./scripts/init_db.sql:/docker-entrypoint-initdb.d/init_db.sql:ro
+      - ./scripts/init_db.sql:/docker-entrypoint-initdb.d/01_init_db.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-kinz_guardian}"]
+      # Check that the database actually exists (not just server readiness)
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-kinz_guardian} -d ${POSTGRES_DB:-margin_guardian}"]
       interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 10
+      start_period: 30s
     networks:
       - kinz-net
 
@@ -29,6 +32,7 @@ services:
       context: .
       dockerfile: airflow/Dockerfile
     container_name: kinz-airflow-init
+    env_file: .env
     depends_on:
       postgres:
         condition: service_healthy
@@ -37,6 +41,8 @@ services:
       AIRFLOW__CORE__EXECUTOR: SequentialExecutor
       AIRFLOW__CORE__LOAD_EXAMPLES: "false"
       AIRFLOW__CORE__FERNET_KEY: ""
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-kinz_guardian}:${POSTGRES_PASSWORD:-change_me_in_prod}@postgres:5432/${POSTGRES_DB:-margin_guardian}
+      SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-}
     entrypoint: /bin/bash
     command:
       - -c
@@ -57,6 +63,7 @@ services:
       context: .
       dockerfile: airflow/Dockerfile
     container_name: kinz-airflow-web
+    env_file: .env
     depends_on:
       airflow-init:
         condition: service_completed_successfully
@@ -66,8 +73,8 @@ services:
       AIRFLOW__CORE__LOAD_EXAMPLES: "false"
       AIRFLOW__CORE__FERNET_KEY: ""
       AIRFLOW__WEBSERVER__SECRET_KEY: "kinz-guardian-secret"
-      SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-}
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-kinz_guardian}:${POSTGRES_PASSWORD:-change_me_in_prod}@postgres:5432/${POSTGRES_DB:-margin_guardian}
+      SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-}
     ports:
       - "8080:8080"
     volumes:
@@ -81,6 +88,7 @@ services:
       interval: 30s
       timeout: 10s
       retries: 5
+      start_period: 60s
     networks:
       - kinz-net
 
@@ -90,6 +98,7 @@ services:
       context: .
       dockerfile: airflow/Dockerfile
     container_name: kinz-airflow-scheduler
+    env_file: .env
     depends_on:
       airflow-init:
         condition: service_completed_successfully
@@ -98,8 +107,8 @@ services:
       AIRFLOW__CORE__EXECUTOR: SequentialExecutor
       AIRFLOW__CORE__LOAD_EXAMPLES: "false"
       AIRFLOW__CORE__FERNET_KEY: ""
-      SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-}
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-kinz_guardian}:${POSTGRES_PASSWORD:-change_me_in_prod}@postgres:5432/${POSTGRES_DB:-margin_guardian}
+      SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-}
     volumes:
       - ./airflow/dags:/opt/airflow/dags:ro
       - ./airflow/plugins:/opt/airflow/plugins:ro
@@ -115,6 +124,7 @@ services:
       context: .
       dockerfile: api/Dockerfile
     container_name: kinz-api
+    env_file: .env
     depends_on:
       postgres:
         condition: service_healthy
@@ -141,6 +151,7 @@ services:
       context: .
       dockerfile: dashboard/Dockerfile
     container_name: kinz-dashboard
+    env_file: .env
     depends_on:
       postgres:
         condition: service_healthy
