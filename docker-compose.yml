@@ -37,11 +37,11 @@ services:
       postgres:
         condition: service_healthy
     environment:
-      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg://${POSTGRES_USER:-kinz_guardian}:${POSTGRES_PASSWORD:-change_me_in_prod}@postgres:5432/${POSTGRES_DB:-margin_guardian}
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${POSTGRES_USER:-kinz_guardian}:${POSTGRES_PASSWORD:-change_me_in_prod}@postgres:5432/${POSTGRES_DB:-margin_guardian}
       AIRFLOW__CORE__EXECUTOR: SequentialExecutor
       AIRFLOW__CORE__LOAD_EXAMPLES: "false"
       AIRFLOW__CORE__FERNET_KEY: ""
-      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-kinz_guardian}:${POSTGRES_PASSWORD:-change_me_in_prod}@postgres:5432/${POSTGRES_DB:-margin_guardian}
+      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-kinz_guardian}:${POSTGRES_PASSWORD:-change_me_in_prod}@postgres:5432/${POSTGRES_DB:-margin_guardian}
       SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-}
     entrypoint: /bin/bash
     command:
@@ -68,12 +68,12 @@ services:
       airflow-init:
         condition: service_completed_successfully
     environment:
-      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg://${POSTGRES_USER:-kinz_guardian}:${POSTGRES_PASSWORD:-change_me_in_prod}@postgres:5432/${POSTGRES_DB:-margin_guardian}
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${POSTGRES_USER:-kinz_guardian}:${POSTGRES_PASSWORD:-change_me_in_prod}@postgres:5432/${POSTGRES_DB:-margin_guardian}
       AIRFLOW__CORE__EXECUTOR: SequentialExecutor
       AIRFLOW__CORE__LOAD_EXAMPLES: "false"
       AIRFLOW__CORE__FERNET_KEY: ""
       AIRFLOW__WEBSERVER__SECRET_KEY: "kinz-guardian-secret"
-      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-kinz_guardian}:${POSTGRES_PASSWORD:-change_me_in_prod}@postgres:5432/${POSTGRES_DB:-margin_guardian}
+      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-kinz_guardian}:${POSTGRES_PASSWORD:-change_me_in_prod}@postgres:5432/${POSTGRES_DB:-margin_guardian}
       SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-}
       PYTHONPATH: "/opt/airflow"
     ports:
@@ -104,11 +104,11 @@ services:
       airflow-init:
         condition: service_completed_successfully
     environment:
-      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg://${POSTGRES_USER:-kinz_guardian}:${POSTGRES_PASSWORD:-change_me_in_prod}@postgres:5432/${POSTGRES_DB:-margin_guardian}
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${POSTGRES_USER:-kinz_guardian}:${POSTGRES_PASSWORD:-change_me_in_prod}@postgres:5432/${POSTGRES_DB:-margin_guardian}
       AIRFLOW__CORE__EXECUTOR: SequentialExecutor
       AIRFLOW__CORE__LOAD_EXAMPLES: "false"
       AIRFLOW__CORE__FERNET_KEY: ""
-      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-kinz_guardian}:${POSTGRES_PASSWORD:-change_me_in_prod}@postgres:5432/${POSTGRES_DB:-margin_guardian}
+      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-kinz_guardian}:${POSTGRES_PASSWORD:-change_me_in_prod}@postgres:5432/${POSTGRES_DB:-margin_guardian}
       SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-}
       PYTHONPATH: "/opt/airflow"
     volumes:
@@ -131,7 +131,7 @@ services:
       postgres:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-kinz_guardian}:${POSTGRES_PASSWORD:-change_me_in_prod}@postgres:5432/${POSTGRES_DB:-margin_guardian}
+      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-kinz_guardian}:${POSTGRES_PASSWORD:-change_me_in_prod}@postgres:5432/${POSTGRES_DB:-margin_guardian}
       JWT_SECRET: ${JWT_SECRET:-dev-only-change-me-in-production-please}
       JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
       JWT_EXPIRE_MINUTES: ${JWT_EXPIRE_MINUTES:-60}
@@ -158,7 +158,7 @@ services:
       postgres:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-kinz_guardian}:${POSTGRES_PASSWORD:-change_me_in_prod}@postgres:5432/${POSTGRES_DB:-margin_guardian}
+      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-kinz_guardian}:${POSTGRES_PASSWORD:-change_me_in_prod}@postgres:5432/${POSTGRES_DB:-margin_guardian}
     ports:
       - "8501:8501"
     volumes:
