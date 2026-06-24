@@ -423,19 +423,27 @@ with tab_whatif:
                 else:
                     st.success(f"✅ B2B margin ({b2b_margin_new:.1f}%) is above threshold ({threshold:.0f}%)")
 
-            # Summary table
+            # Summary table — convert all values to strings to avoid
+            # pyarrow ArrowInvalid errors from mixed float/str columns
             st.markdown("#### Scenario Summary")
 
+            def fmt_delta(delta, is_pct=False):
+                if delta == "":
+                    return "—"
+                suffix = "%" if is_pct else ""
+                sign = "+" if delta >= 0 else ""
+                return f"{sign}{delta:.2f}{suffix}"
+
             summary = pd.DataFrame([
-                {"Metric": "COGS (TND)", "Original": current_cogs, "Adjusted": adjusted_cogs, "Delta": adjusted_cogs - current_cogs},
-                {"Metric": "B2C Price (TND)", "Original": b2c_price_orig, "Adjusted": b2c_price_new, "Delta": b2c_price_new - b2c_price_orig},
-                {"Metric": "B2B Price (TND)", "Original": b2b_price_orig, "Adjusted": b2b_price_new, "Delta": b2b_price_new - b2b_price_orig},
-                {"Metric": "B2C Margin (%)", "Original": b2c_margin_orig, "Adjusted": b2c_margin_new, "Delta": b2c_margin_new - b2c_margin_orig},
-                {"Metric": "B2B Margin (%)", "Original": b2b_margin_orig, "Adjusted": b2b_margin_new, "Delta": b2b_margin_new - b2b_margin_orig},
-                {"Metric": "B2C Alert", "Original": "Yes" if b2c_margin_orig < threshold else "No", "Adjusted": "Yes" if b2c_alert_new else "No", "Delta": ""},
-                {"Metric": "B2B Alert", "Original": "Yes" if b2b_margin_orig < threshold else "No", "Adjusted": "Yes" if b2b_alert_new else "No", "Delta": ""},
+                {"Metric": "COGS (TND)", "Original": f"{current_cogs:.3f}", "Adjusted": f"{adjusted_cogs:.3f}", "Delta": fmt_delta(adjusted_cogs - current_cogs)},
+                {"Metric": "B2C Price (TND)", "Original": f"{b2c_price_orig:.3f}", "Adjusted": f"{b2c_price_new:.3f}", "Delta": fmt_delta(b2c_price_new - b2c_price_orig)},
+                {"Metric": "B2B Price (TND)", "Original": f"{b2b_price_orig:.3f}", "Adjusted": f"{b2b_price_new:.3f}", "Delta": fmt_delta(b2b_price_new - b2b_price_orig)},
+                {"Metric": "B2C Margin (%)", "Original": f"{b2c_margin_orig:.2f}", "Adjusted": f"{b2c_margin_new:.2f}", "Delta": fmt_delta(b2c_margin_new - b2c_margin_orig, is_pct=True)},
+                {"Metric": "B2B Margin (%)", "Original": f"{b2b_margin_orig:.2f}", "Adjusted": f"{b2b_margin_new:.2f}", "Delta": fmt_delta(b2b_margin_new - b2b_margin_orig, is_pct=True)},
+                {"Metric": "B2C Alert", "Original": "🚨 Yes" if b2c_margin_orig < threshold else "✅ No", "Adjusted": "🚨 Yes" if b2c_alert_new else "✅ No", "Delta": "—"},
+                {"Metric": "B2B Alert", "Original": "🚨 Yes" if b2b_margin_orig < threshold else "✅ No", "Adjusted": "🚨 Yes" if b2b_alert_new else "✅ No", "Delta": "—"},
             ])
-            st.dataframe(summary, use_container_width=True, hide_index=True)
+            st.table(summary)
 
 st.markdown("---")
 st.caption("🛡️ Kinz Margin Guardian — Automated margin monitoring for KINZ natural cosmetics. Data from PostgreSQL, margins calculated by Airflow DAG.")

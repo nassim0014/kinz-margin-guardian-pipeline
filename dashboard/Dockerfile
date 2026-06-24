@@ -7,10 +7,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential libpq-dev && \
     rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt /tmp/requirements.txt
+COPY requirements-dashboard.txt /tmp/requirements.txt
 RUN pip install --no-cache-dir -r /tmp/requirements.txt
 
-# Pre-create target directories (defensive — prevents COPY failure on empty dirs)
+# Pre-create target directories (defensive)
 RUN mkdir -p /app/dashboard /app/src /app/.streamlit
 
 COPY dashboard/ /app/dashboard/

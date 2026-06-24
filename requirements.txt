@@ -1,25 +1,11 @@
-# Kinz Margin Guardian Pipeline — Python dependencies
+# Kinz Margin Guardian Pipeline — Shared dependencies
+# Used by src/ modules (margin_engine, alert_manager, config)
 
 # ---- Core ----
 python-dotenv>=1.0
 psycopg[binary]>=3.1
 SQLAlchemy>=2.0
 pydantic>=2.5
-
-# ---- FastAPI ----
-fastapi>=0.110
-uvicorn[standard]>=0.27
-python-multipart>=0.0.9
-PyJWT>=2.8
-slowapi>=0.1.9
-
-# ---- Airflow ----
-apache-airflow>=2.9
-pendulum>=3.0
-
-# ---- Streamlit + Plotly ----
-streamlit>=1.30
-plotly>=5.18
 
 # ---- Data ----
 pandas>=2.0
@@ -28,6 +14,3 @@ numpy>=1.24
 # ---- Testing ----
 pytest>=8.0
 httpx>=0.27
-
-# ---- Visualization ----
-matplotlib>=3.7
