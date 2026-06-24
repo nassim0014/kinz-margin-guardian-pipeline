@@ -10,9 +10,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY requirements.txt /tmp/requirements.txt
 RUN pip install --no-cache-dir -r /tmp/requirements.txt
 
-COPY api /app/api
-COPY src /app/src
-COPY scripts /app/scripts
+# Pre-create target directories (defensive — prevents COPY failure on empty dirs)
+RUN mkdir -p /app/api /app/src /app/scripts
+
+COPY api/ /app/api/
+COPY src/ /app/src/
+COPY scripts/ /app/scripts/
 
 EXPOSE 8000
 

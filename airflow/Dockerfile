@@ -10,8 +10,12 @@ USER airflow
 COPY requirements.txt /tmp/requirements.txt
 RUN pip install --no-cache-dir -r /tmp/requirements.txt
 
-# Copy DAGs and plugins
-COPY airflow/dags /opt/airflow/dags
-COPY airflow/plugins /opt/airflow/plugins
-COPY src /opt/airflow/src
-COPY scripts /opt/airflow/scripts
+# Pre-create target directories so COPY never fails if a source
+# directory is empty or missing (e.g. airflow/plugins has only .gitkeep)
+RUN mkdir -p /opt/airflow/dags /opt/airflow/plugins /opt/airflow/src /opt/airflow/scripts
+
+# Copy DAGs, plugins, src, and scripts
+COPY airflow/dags/ /opt/airflow/dags/
+COPY airflow/plugins/ /opt/airflow/plugins/
+COPY src/ /opt/airflow/src/
+COPY scripts/ /opt/airflow/scripts/

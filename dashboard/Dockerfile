@@ -10,9 +10,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY requirements.txt /tmp/requirements.txt
 RUN pip install --no-cache-dir -r /tmp/requirements.txt
 
-COPY dashboard /app/dashboard
-COPY src /app/src
-COPY .streamlit /app/.streamlit
+# Pre-create target directories (defensive — prevents COPY failure on empty dirs)
+RUN mkdir -p /app/dashboard /app/src /app/.streamlit
+
+COPY dashboard/ /app/dashboard/
+COPY src/ /app/src/
+COPY .streamlit/ /app/.streamlit/
 
 EXPOSE 8501
 
