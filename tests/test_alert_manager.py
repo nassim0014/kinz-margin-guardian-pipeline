@@ -1,5 +1,4 @@
 """Unit tests for the alert manager."""
-import pytest
 from unittest.mock import patch, MagicMock
 from src.alert_manager import send_slack_alert, format_alert_message
 
