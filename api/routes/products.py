@@ -33,8 +33,11 @@ def create_product(prod: ProductCreate, db: Session = Depends(get_db), user=Depe
         RETURNING id, name, category, cogs_tnd, b2b_price_tnd, b2c_price_tnd, alert_threshold_pct, active, created_at, updated_at
     """), {"name": prod.name, "cat": prod.category, "cogs": prod.cogs_tnd,
            "b2b": prod.b2b_price_tnd, "b2c": prod.b2c_price_tnd, "thr": prod.alert_threshold_pct})
+    # Fetch the RETURNING row BEFORE committing — SQLite requires the cursor
+    # to be consumed before commit, and it's better practice for PostgreSQL too.
+    row = result.fetchone()
     db.commit()
-    return dict(result.fetchone()._mapping)
+    return dict(row._mapping)
 
 
 @router.put("/{product_id}", response_model=ProductResponse)
@@ -80,7 +83,7 @@ def deactivate_product(product_id: int, db: Session = Depends(get_db), user=Depe
 def get_latest_margins(db: Session = Depends(get_db), user=Depends(get_current_user)):
     """Get the latest margins for all products."""
     result = db.execute(text("""
-        SELECT mh.product_id, p.name as product_name, mh.calc_date::text,
+        SELECT mh.product_id, p.name as product_name, CAST(mh.calc_date AS TEXT),
                mh.b2c_margin_pct, mh.b2b_margin_pct, mh.b2c_price_tnd,
                mh.b2b_price_tnd, mh.cogs_tnd
         FROM margin_history mh

@@ -9,3 +9,27 @@ requires-python = ">=3.11"
 
 [tool.setuptools]
 packages = ["src"]
+
+[tool.ruff]
+target-version = "py312"
+extend-exclude = ["venv", ".venv", "data", "logs"]
+line-length = 120
+
+[tool.ruff.lint]
+# Error-only, on purpose. The goal is to catch bugs that break things at
+# runtime — not to impose a style. A gate that fires on formatting opinions
+# gets ignored, and then it catches nothing.
+select = ["E9", "F", "B"]
+
+ignore = [
+    # FastAPI's dependency-injection idiom IS a call in an argument default:
+    #   def route(db: Session = Depends(get_db))
+    # There are 17 of these in api/routes/. They are correct, not a smell.
+    "B008",
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Package __init__ files re-export names for convenience.
+"__init__.py" = ["F401"]
+# Tests legitimately import fixtures they don't reference directly.
+"tests/*" = ["F401", "F811"]
