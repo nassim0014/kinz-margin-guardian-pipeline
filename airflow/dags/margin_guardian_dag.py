@@ -225,9 +225,9 @@ def calculate_margins_task(**context):
     margin_records = []
     for row in rows:
         product_id = row[0]
-        product_name = row[1]
+        _product_name = row[1]  # noqa: F841
         cogs = float(row[2])
-        threshold = float(row[3]) if row[3] else DEFAULT_ALERT_THRESHOLD_PCT
+        _threshold = float(row[3]) if row[3] else DEFAULT_ALERT_THRESHOLD_PCT
         competitor_price = float(row[4])
         # Use the actual price_date from the row (may differ from exec_date in fallback)
         calc_date = row[5] if len(row) > 5 else exec_date
