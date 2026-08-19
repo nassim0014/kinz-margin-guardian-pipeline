@@ -2,12 +2,16 @@
 
 Creates an isolated SQLite test database and overrides the FastAPI
 dependency so TestClient hits the test DB, not production.
+
+Note: the API imports (api.database, api.main) are deferred into the
+fixtures so that CI — which doesn't install fastapi/httpx/PyJWT — can
+still collect and run the non-API tests without import errors. The API
+tests themselves use pytest.importorskip to skip gracefully.
 """
 import os
 import tempfile
 
 # Point DATABASE_URL at a temp SQLite file BEFORE any api module is imported.
-# api/database.py creates the engine at import time from DATABASE_URL.
 _DB_fd, _DB_PATH = tempfile.mkstemp(suffix=".db")
 os.environ["DATABASE_URL"] = f"sqlite:///{_DB_PATH}"
 os.environ.setdefault("API_USER", "test@kinzoils.com")
@@ -17,15 +21,11 @@ import pytest
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
-from api.database import get_db
-from api.main import app
-
 
 @pytest.fixture(scope="session", autouse=True)
 def _create_tables():
     """Create all tables in the test SQLite database."""
     engine = create_engine(f"sqlite:///{_DB_PATH}")
-    # SQLite-compatible DDL (adapted from scripts/init_db.sql)
     statements = [
         "CREATE TABLE IF NOT EXISTS products ("
         "  id INTEGER PRIMARY KEY AUTOINCREMENT,"
@@ -78,11 +78,9 @@ def db_session():
 
     Cleans up all tables before each test so tests are isolated.
     """
-    from sqlalchemy import text
     engine = create_engine(f"sqlite:///{_DB_PATH}")
     Session = sessionmaker(bind=engine)
     session = Session()
-    # Clean up any data left by previous tests
     for table in ["alerts", "margin_history", "products"]:
         session.execute(text(f"DELETE FROM {table}"))
     session.commit()
@@ -94,7 +92,19 @@ def db_session():
 
 @pytest.fixture
 def client(db_session):
-    """FastAPI TestClient with the test database injected."""
+    """FastAPI TestClient with the test database injected.
+
+    Deferred import so CI (which doesn't install fastapi) can still
+    collect the non-API tests. The API tests use importorskip to
+    skip gracefully if fastapi is not available.
+    """
+    try:
+        from api.database import get_db
+        from api.main import app
+    except ImportError:
+        pytest.skip("fastapi not installed — skipping API tests")
+    from fastapi.testclient import TestClient
+
     def _override_get_db():
         try:
             yield db_session
@@ -102,7 +112,6 @@ def client(db_session):
             pass
 
     app.dependency_overrides[get_db] = _override_get_db
-    from fastapi.testclient import TestClient
     yield TestClient(app)
     app.dependency_overrides.clear()
 
