@@ -1,5 +1,4 @@
 """Unit tests for the margin calculation engine."""
-import pytest
 
 from src.margin_engine import (
     calculate_margins,
@@ -7,7 +6,7 @@ from src.margin_engine import (
     compute_product_margins,
     MarginResult,
 )
-from src.config import B2B_DISCOUNT_FACTOR, DEFAULT_ALERT_THRESHOLD_PCT
+from src.config import B2B_DISCOUNT_FACTOR
 
 
 class TestCalculateMargins:

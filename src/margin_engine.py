@@ -8,7 +8,6 @@ Functions:
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
 
 from src.config import B2B_DISCOUNT_FACTOR, DEFAULT_ALERT_THRESHOLD_PCT
 

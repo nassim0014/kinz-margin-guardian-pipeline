@@ -10,7 +10,6 @@ Pages (tabs):
 """
 from __future__ import annotations
 
-import os
 import sys
 from pathlib import Path
 
@@ -33,9 +32,9 @@ st.set_page_config(
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from src.config import DATABASE_URL
-from src.margin_engine import calculate_margins, check_margin_threshold
-from src.config import B2B_DISCOUNT_FACTOR, DEFAULT_ALERT_THRESHOLD_PCT
+from src.config import DATABASE_URL  # noqa: E402
+from src.margin_engine import calculate_margins, check_margin_threshold  # noqa: E402
+from src.config import B2B_DISCOUNT_FACTOR  # noqa: E402
 
 
 @st.cache_resource

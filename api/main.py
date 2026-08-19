@@ -3,14 +3,13 @@ from __future__ import annotations
 
 from datetime import timedelta
 
-from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi import FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi import Limiter
 from slowapi.util import get_remote_address
-from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
-from api.auth import create_access_token, authenticate_user, get_current_user
+from api.auth import create_access_token, authenticate_user
 from api.models import Token, TokenRequest
 from api.routes import products, thresholds, alerts
 

@@ -1,6 +1,5 @@
 """Simulate competitor pricing data for testing the pipeline."""
 import sys
-import random
 from datetime import date, timedelta
 from pathlib import Path
 
