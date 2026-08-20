@@ -19,7 +19,7 @@ from __future__ import annotations
 import logging
 import os
 import sys
-from datetime import datetime, timedelta, date, timezone
+from datetime import datetime, timedelta, timezone
 
 import pandas as pd
 from sqlalchemy import create_engine, text
@@ -34,12 +34,15 @@ from airflow.utils.dates import days_ago
 from src.config import (
     DATABASE_URL,
     SLACK_WEBHOOK_URL,
-    DEFAULT_ALERT_THRESHOLD_PCT,
-    B2B_DISCOUNT_FACTOR,
     PRICE_RETENTION_DAYS,
 )
-from src.margin_engine import calculate_margins, check_margin_threshold
-from src.alert_manager import send_slack_alert, format_alert_message
+from src.alert_manager import send_slack_alert
+from src.dag_logic import (
+    get_execution_date,
+    validate_price_data,
+    build_margin_records,
+    build_alert_data,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -49,19 +52,6 @@ logger = logging.getLogger(__name__)
 def get_engine():
     """Create a SQLAlchemy engine from the DATABASE_URL env var."""
     return create_engine(DATABASE_URL)
-
-
-def get_execution_date(context: dict) -> date:
-    """Extract the execution date from Airflow context.
-
-    Falls back to date.today() if context['ds'] is not available
-    (e.g., when testing outside Airflow).
-    """
-    ds = context.get("ds")
-    if ds:
-        return datetime.strptime(ds, "%Y-%m-%d").date()
-    logger.warning("No 'ds' in context — falling back to date.today()")
-    return date.today()
 
 
 # ---------------------------------------------------------------------
@@ -131,29 +121,11 @@ def validate_ingested_data(**context):
     engine = get_engine()
     exec_date = get_execution_date(context)
 
-    # Check daily_prices — look at the last 30 days for robustness
     prices_df = pd.read_sql(
         text("SELECT * FROM daily_prices WHERE price_date >= CURRENT_DATE - INTERVAL '30 days'"),
         engine,
     )
 
-    if prices_df.empty:
-        logger.error(
-            f"DATA QUALITY FAIL: No prices found in the last 30 days "
-            f"(execution date: {exec_date}) — skipping margin calculation."
-        )
-        return False
-
-    # Check competitor_price > 0
-    invalid_prices = prices_df[prices_df["competitor_price_tnd"] <= 0]
-    if not invalid_prices.empty:
-        logger.error(
-            f"DATA QUALITY FAIL: {len(invalid_prices)} prices are <= 0 — "
-            f"products: {invalid_prices['product_id'].tolist()}"
-        )
-        return False
-
-    # Check that all products with prices have COGS > 0
     products_df = pd.read_sql(
         text(
             "SELECT id, name, cogs_tnd FROM products WHERE active = true AND id IN "
@@ -162,11 +134,11 @@ def validate_ingested_data(**context):
         engine,
     )
 
-    invalid_cogs = products_df[products_df["cogs_tnd"] <= 0]
-    if not invalid_cogs.empty:
+    is_valid, reason = validate_price_data(prices_df, products_df)
+    if not is_valid:
         logger.error(
-            f"DATA QUALITY FAIL: {len(invalid_cogs)} products have COGS <= 0 — "
-            f"products: {invalid_cogs['name'].tolist()}"
+            f"DATA QUALITY FAIL: {reason} "
+            f"(execution date: {exec_date}) — skipping margin calculation."
         )
         return False
 
@@ -222,30 +194,7 @@ def calculate_margins_task(**context):
         logger.warning("No data to calculate margins for — even with fallback.")
         return 0
 
-    margin_records = []
-    for row in rows:
-        product_id = row[0]
-        _product_name = row[1]  # noqa: F841
-        cogs = float(row[2])
-        _threshold = float(row[3]) if row[3] else DEFAULT_ALERT_THRESHOLD_PCT
-        competitor_price = float(row[4])
-        # Use the actual price_date from the row (may differ from exec_date in fallback)
-        calc_date = row[5] if len(row) > 5 else exec_date
-
-        b2c_price, b2b_price, b2c_margin, b2b_margin = calculate_margins(
-            cogs, competitor_price, B2B_DISCOUNT_FACTOR
-        )
-
-        margin_records.append({
-            "product_id": product_id,
-            "calc_date": calc_date,
-            "b2c_margin_pct": b2c_margin,
-            "b2b_margin_pct": b2b_margin,
-            "b2c_price_tnd": b2c_price,
-            "b2b_price_tnd": b2b_price,
-            "cogs_tnd": cogs,
-        })
-
+    margin_records = build_margin_records(rows, exec_date)
     df = pd.DataFrame(margin_records)
 
     with engine.begin() as conn:
@@ -304,48 +253,8 @@ def check_thresholds_task(**context):
         ti.xcom_push(key="alert_data", value=[])
         return 0
 
-    alerts_created = 0
-    alert_data = []  # Store for the Slack task
-
-    for row in rows:
-        product_id = row[0]
-        product_name = row[1]
-        b2c_margin = float(row[2])
-        b2b_margin = float(row[3])
-        threshold = float(row[4]) if row[4] else DEFAULT_ALERT_THRESHOLD_PCT
-        cogs = float(row[5])
-        b2c_price = float(row[6])
-        b2b_price = float(row[7])
-
-        b2c_alert, b2b_alert = check_margin_threshold(b2c_margin, b2b_margin, threshold)
-
-        if b2c_alert:
-            msg = format_alert_message(product_name, "B2C", b2c_margin, threshold)
-            alert_data.append({
-                "product_id": product_id,
-                "alert_type": "B2C",
-                "margin_pct": b2c_margin,
-                "threshold_pct": threshold,
-                "message": msg,
-                "product_name": product_name,
-                "cogs": cogs,
-                "price": b2c_price,
-            })
-            alerts_created += 1
-
-        if b2b_alert:
-            msg = format_alert_message(product_name, "B2B", b2b_margin, threshold)
-            alert_data.append({
-                "product_id": product_id,
-                "alert_type": "B2B",
-                "margin_pct": b2b_margin,
-                "threshold_pct": threshold,
-                "message": msg,
-                "product_name": product_name,
-                "cogs": cogs,
-                "price": b2b_price,
-            })
-            alerts_created += 1
+    alert_data = build_alert_data(rows)
+    alerts_created = len(alert_data)
 
     # Insert alerts into the alerts table
     if alert_data:
