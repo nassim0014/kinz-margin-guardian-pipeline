@@ -78,12 +78,12 @@ leave only `st.*` calls in `app.py`.
 
 ## Next
 
-### 5. No CLAUDE.md or .claude/commands/improve.md
-The repo has no project-level instructions for AI agents. Adding a
-`CLAUDE.md` with the ground rules (never push to main, test commands,
-known traps) and a `.claude/commands/improve.md` would let the closed-loop
-work this repo autonomously. Low priority — only worth doing when the
-backlog items above have been worked down.
+### 5. ~~No CLAUDE.md or .claude/commands/improve.md~~ ✅
+Added `CLAUDE.md` with ground rules (never push to main, squash-merge
+only, test commands), architecture overview, known traps
+(commit-before-fetch, `::text` casts), and loop-engine integration
+notes. The `.claude/commands/improve.md` is deferred — the closed-loop
+works fine without it since the loop engine drives the PR cycle.
 
 ### 6. Requirements use `>=` throughout — no pins
 All four `requirements-*.txt` files use `>=` with no upper bound. This
