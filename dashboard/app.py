@@ -335,8 +335,10 @@ with tab_whatif:
             )
 
             # Calculate adjusted values
-            adjusted_cogs = round(current_cogs * (1 + cogs_adjust / 100), 3)
-            adjusted_price = round(current_price * (1 + price_adjust / 100), 3)
+            from dashboard.analysis import compute_adjusted_values
+            adjusted_cogs, adjusted_price = compute_adjusted_values(
+                current_cogs, current_price, cogs_adjust, price_adjust
+            )
 
             st.markdown(f"**Current COGS:** {current_cogs:.3f} TND")
             st.markdown(f"**Adjusted COGS:** {adjusted_cogs:.3f} TND")
@@ -426,22 +428,12 @@ with tab_whatif:
             # pyarrow ArrowInvalid errors from mixed float/str columns
             st.markdown("#### Scenario Summary")
 
-            def fmt_delta(delta, is_pct=False):
-                if delta == "":
-                    return "—"
-                suffix = "%" if is_pct else ""
-                sign = "+" if delta >= 0 else ""
-                return f"{sign}{delta:.2f}{suffix}"
-
-            summary = pd.DataFrame([
-                {"Metric": "COGS (TND)", "Original": f"{current_cogs:.3f}", "Adjusted": f"{adjusted_cogs:.3f}", "Delta": fmt_delta(adjusted_cogs - current_cogs)},
-                {"Metric": "B2C Price (TND)", "Original": f"{b2c_price_orig:.3f}", "Adjusted": f"{b2c_price_new:.3f}", "Delta": fmt_delta(b2c_price_new - b2c_price_orig)},
-                {"Metric": "B2B Price (TND)", "Original": f"{b2b_price_orig:.3f}", "Adjusted": f"{b2b_price_new:.3f}", "Delta": fmt_delta(b2b_price_new - b2b_price_orig)},
-                {"Metric": "B2C Margin (%)", "Original": f"{b2c_margin_orig:.2f}", "Adjusted": f"{b2c_margin_new:.2f}", "Delta": fmt_delta(b2c_margin_new - b2c_margin_orig, is_pct=True)},
-                {"Metric": "B2B Margin (%)", "Original": f"{b2b_margin_orig:.2f}", "Adjusted": f"{b2b_margin_new:.2f}", "Delta": fmt_delta(b2b_margin_new - b2b_margin_orig, is_pct=True)},
-                {"Metric": "B2C Alert", "Original": "🚨 Yes" if b2c_margin_orig < threshold else "✅ No", "Adjusted": "🚨 Yes" if b2c_alert_new else "✅ No", "Delta": "—"},
-                {"Metric": "B2B Alert", "Original": "🚨 Yes" if b2b_margin_orig < threshold else "✅ No", "Adjusted": "🚨 Yes" if b2b_alert_new else "✅ No", "Delta": "—"},
-            ])
+            from dashboard.analysis import build_scenario_summary
+            summary = build_scenario_summary(
+                current_cogs, adjusted_cogs,
+                current_price, adjusted_price,
+                threshold,
+            )
             st.table(summary)
 
 st.markdown("---")

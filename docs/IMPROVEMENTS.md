@@ -71,10 +71,13 @@ Extract the pure-Python business logic into `src/` modules (same pattern
 as kinz-competitor-intelligence's `dashboard/analysis.py`), then test
 those modules. Leave only Airflow operator wiring in the DAG file.
 
-### 4. Dashboard is 449 lines with zero tests
-`dashboard/app.py` — same pattern. Extract pure computation (margin
-formatting, chart data preparation) into a testable `dashboard/analysis.py`,
-leave only `st.*` calls in `app.py`.
+### 4. ~~Dashboard is 449 lines with zero tests~~ ✅
+Extracted pure computation (`compute_adjusted_values`,
+`build_scenario_summary`, `fmt_delta`) from `dashboard/app.py` into
+`dashboard/analysis.py`. 17 new tests in `tests/test_dashboard_analysis.py`
+cover adjustment math, delta formatting, and the full scenario summary
+builder (alert states, margin direction). app.py now calls the extracted
+functions via inline imports.
 
 ## Next
 
