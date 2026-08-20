@@ -62,14 +62,12 @@ section to `pyproject.toml` (match the error-only pattern from
 kinz-competitor-intelligence: `select = ["E9", "F", "B"]`) to stop CI
 from reporting style noise.
 
-### 3. Airflow DAG is 488 lines with zero tests
-`airflow/dags/margin_guardian_dag.py` is the largest file in the repo and
-has no test coverage. It likely contains business logic (margin checking,
-alert dispatching, competitor price fetching) mixed with Airflow boilerplate.
-
-Extract the pure-Python business logic into `src/` modules (same pattern
-as kinz-competitor-intelligence's `dashboard/analysis.py`), then test
-those modules. Leave only Airflow operator wiring in the DAG file.
+### 3. ~~Airflow DAG is 488 lines with zero tests~~ ✅
+Extracted pure logic (`get_execution_date`, `validate_price_data`,
+`build_margin_records`, `build_alert_data`) from the DAG into
+`src/dag_logic.py`. 20 new tests in `tests/test_dag_logic.py`.
+The DAG now imports and calls these; only DB I/O + Airflow operator
+wiring remains in the DAG file. 54 tests pass (was 34).
 
 ### 4. ~~Dashboard is 449 lines with zero tests~~ ✅
 Extracted pure computation (`compute_adjusted_values`,
