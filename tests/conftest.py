@@ -9,7 +9,14 @@ still collect and run the non-API tests without import errors. The API
 tests themselves use pytest.importorskip to skip gracefully.
 """
 import os
+import sys
 import tempfile
+from pathlib import Path
+
+# Add repo root to sys.path so `dashboard` and `src` are importable.
+# Without this, tests/test_dashboard_analysis.py fails with
+# ModuleNotFoundError: No module named 'dashboard' in CI.
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 # Point DATABASE_URL at a temp SQLite file BEFORE any api module is imported.
 _DB_fd, _DB_PATH = tempfile.mkstemp(suffix=".db")
