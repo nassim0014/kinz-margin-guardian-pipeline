@@ -44,7 +44,14 @@ jobs:
           echo "✅ All files compile cleanly"
 
       - name: Run pytest suite
-        run: pytest tests/ -v --tb=short
+        run: pytest tests/ -v --tb=short --cov=src --cov-report=xml --cov-report=term-missing
+      - name: Upload coverage to Codecov
+        if: github.event_name == "push" && github.ref == "refs/heads/main" && matrix.python == "3.12"
+        uses: codecov/codecov-action@v5
+        with:
+          files: ./coverage.xml
+          fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}
 
   docker:
     name: Docker build smoke test
