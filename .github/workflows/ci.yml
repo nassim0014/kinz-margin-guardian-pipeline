@@ -27,10 +27,14 @@ jobs:
           python-version: ${{ matrix.python }}
           cache: 'pip'
 
-      - name: Install lightweight test dependencies
+      - name: Install test dependencies
         run: |
           python -m pip install --upgrade pip
           pip install pandas numpy pytest pydantic SQLAlchemy
+          # API test deps (item 7.4 from handoff): the 22 API tests skip
+          # gracefully via pytest.importorskip if these aren't installed.
+          # Installing them lets the tests actually run in CI.
+          pip install fastapi httpx PyJWT slowapi
           # Install src package for imports
           pip install -e .
 
