@@ -25,7 +25,7 @@ api/              FastAPI app (margin/alert routes)
   routes/
 dashboard/        Streamlit dashboard (~449 lines)
 src/              Shared library code
-tests/            pytest suite (39 tests)
+tests/            pytest suite (79 tests)
 docs/             IMPROVEMENTS.md backlog
 ```
 
@@ -35,7 +35,7 @@ docs/             IMPROVEMENTS.md backlog
 python3 -m venv .venv && source .venv/bin/activate
 pip install pandas numpy pytest pydantic SQLAlchemy httpx
 
-# Tests (39 tests, ~0.2s)
+# Tests (79 tests, ~3s)
 pytest tests/ -v
 
 # Lint

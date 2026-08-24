@@ -61,6 +61,22 @@ class TestAuth:
         resp = client.get("/products", headers=auth_headers)
         assert resp.status_code == 200
 
+    def test_protected_route_with_expired_token_returns_401(self, client):
+        """verify_token's ExpiredSignatureError branch (api/auth.py)."""
+        from datetime import timedelta
+        from api.auth import create_access_token
+
+        expired = create_access_token({"sub": "test@kinzoils.com"}, expires_delta=timedelta(minutes=-1))
+        resp = client.get("/products", headers={"Authorization": f"Bearer {expired}"})
+        assert resp.status_code == 401
+        assert resp.json()["detail"] == "Token expired"
+
+    def test_protected_route_with_malformed_token_returns_401(self, client):
+        """verify_token's InvalidTokenError branch (api/auth.py)."""
+        resp = client.get("/products", headers={"Authorization": "Bearer not-a-real-jwt"})
+        assert resp.status_code == 401
+        assert resp.json()["detail"] == "Invalid token"
+
 
 # ─── Products ───────────────────────────────────────────────────────
 

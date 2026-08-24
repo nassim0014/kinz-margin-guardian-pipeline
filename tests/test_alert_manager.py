@@ -67,6 +67,28 @@ class TestSendSlackAlert:
         mock_urlopen.assert_called_once()
 
     @patch("src.alert_manager.urlopen")
+    def test_slack_non_200_response_returns_false(self, mock_urlopen):
+        """When Slack responds but not with 200, the call is treated as failed
+        (unlike a raised exception, this path does NOT fall back to logging)."""
+        mock_resp = MagicMock()
+        mock_resp.status = 429
+        mock_resp.__enter__ = MagicMock(return_value=mock_resp)
+        mock_resp.__exit__ = MagicMock(return_value=False)
+        mock_urlopen.return_value = mock_resp
+
+        result = send_slack_alert(
+            webhook_url="https://hooks.slack.com/services/test",
+            product_name="Test Product",
+            alert_type="B2C",
+            margin_pct=25.0,
+            threshold_pct=40.0,
+            cogs=20.0,
+            price=30.0,
+        )
+        assert result is False
+        mock_urlopen.assert_called_once()
+
+    @patch("src.alert_manager.urlopen")
     def test_slack_error_falls_back_to_logging(self, mock_urlopen):
         """When Slack returns an error, alert is still logged."""
         mock_urlopen.side_effect = Exception("Network error")
