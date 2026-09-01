@@ -7,6 +7,11 @@ psycopg[binary]>=3.1
 SQLAlchemy>=2.0
 pydantic>=2.5
 
+# Shared toolkit — src/alert_manager delegates Slack delivery to astk.alerts
+# (retry/backoff, never-raises). Private repo: the build environment needs
+# credentials (a PAT or SSH key) to install it.
+analytics-service-toolkit @ git+https://github.com/nassim0014/analytics-service-toolkit@main
+
 # ---- Data ----
 pandas>=2.0
 numpy>=1.24
