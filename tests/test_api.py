@@ -10,6 +10,8 @@ available, the entire file skips gracefully rather than failing collection.
 """
 from __future__ import annotations
 
+from unittest.mock import patch
+
 import pytest
 
 # Skip the entire module if fastapi isn't installed (CI lightweight install)
@@ -28,10 +30,17 @@ class TestHealthAndRoot:
         assert data["name"] == "Kinz Margin Guardian API"
         assert "version" in data
 
-    def test_health_returns_ok(self, client):
+    def test_health_returns_ok_when_db_reachable(self, client):
         resp = client.get("/health")
         assert resp.status_code == 200
-        assert resp.json() == {"status": "ok"}
+        assert resp.json() == {"status": "ok", "database": "ok"}
+
+    def test_health_returns_503_when_db_unreachable(self, client):
+        # /health actually probes the DB; simulate it being down.
+        with patch("api.main.healthcheck", return_value=False):
+            resp = client.get("/health")
+        assert resp.status_code == 503
+        assert resp.json() == {"status": "degraded", "database": "unreachable"}
 
 
 # ─── Auth ───────────────────────────────────────────────────────────
