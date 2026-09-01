@@ -22,7 +22,8 @@ import sys
 from datetime import datetime, timedelta, timezone
 
 import pandas as pd
-from sqlalchemy import create_engine, text
+from astk.db import make_engine, wait_for_db
+from sqlalchemy import text
 
 # Ensure src/ is importable inside Airflow
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
@@ -50,8 +51,14 @@ logger = logging.getLogger(__name__)
 # DB helper
 # ---------------------------------------------------------------------
 def get_engine():
-    """Create a SQLAlchemy engine from the DATABASE_URL env var."""
-    return create_engine(DATABASE_URL)
+    """Return the shared SQLAlchemy engine for DATABASE_URL.
+
+    Built by astk.db.make_engine, which caches one engine per URL — so the
+    six tasks calling get_engine() reuse a single pooled engine instead of
+    creating (and leaking) a fresh one on every call, as the previous
+    create_engine(DATABASE_URL) did.
+    """
+    return make_engine(DATABASE_URL)
 
 
 # ---------------------------------------------------------------------
@@ -67,6 +74,13 @@ def ingest_competitor_prices(**context):
     np.random.seed(42)
 
     engine = get_engine()
+    # The app container can start before Postgres is accepting connections
+    # (the Docker Compose startup race). Wait for readiness before the first
+    # query instead of letting the run fail against a cold database.
+    if not wait_for_db(engine):
+        raise RuntimeError(
+            "Database not reachable after wait_for_db timeout — aborting run."
+        )
     exec_date = get_execution_date(context)
 
     # Load active products
