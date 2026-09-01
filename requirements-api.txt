@@ -10,3 +10,8 @@ python-multipart>=0.0.9
 PyJWT>=2.8
 slowapi>=0.1.9
 pandas>=2.0
+
+# Shared toolkit — api/database uses astk.db.make_engine and /health uses
+# astk.db.healthcheck. Private repo: the build environment needs credentials
+# (a PAT or SSH key), or astk must be published.
+analytics-service-toolkit @ git+https://github.com/nassim0014/analytics-service-toolkit@main

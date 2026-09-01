@@ -5,11 +5,15 @@ from datetime import timedelta
 
 from fastapi import FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 from slowapi.middleware import SlowAPIMiddleware
 
+from astk.db import healthcheck
+
 from api.auth import create_access_token, authenticate_user
+from api.database import engine
 from api.models import Token, TokenRequest
 from api.routes import products, thresholds, alerts
 
@@ -41,7 +45,22 @@ def root():
 
 @app.get("/health")
 def health():
-    return {"status": "ok"}
+    """Liveness + database readiness.
+
+    A health endpoint that returns 200 while the database is unreachable is
+    worse than useless — orchestrators and uptime checks would treat a
+    half-dead service as healthy. So this actually probes the DB (astk's
+    healthcheck runs a trivial ``SELECT 1``) and returns 503 when it can't be
+    reached, 200 otherwise.
+    """
+    db_ok = healthcheck(engine)
+    payload = {
+        "status": "ok" if db_ok else "degraded",
+        "database": "ok" if db_ok else "unreachable",
+    }
+    if not db_ok:
+        return JSONResponse(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, content=payload)
+    return payload
 
 
 @app.post("/auth/token", response_model=Token)
