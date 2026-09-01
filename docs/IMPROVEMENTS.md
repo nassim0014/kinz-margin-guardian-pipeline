@@ -39,7 +39,31 @@ docker compose up --build -d
 
 ## Now
 
-### 1. API routes at 0% coverage
+### 1. 🔴 CI workflow on `main` is broken — no passing run since 2026-08-21
+`.github/workflows/ci.yml` fails to load on every push to `main` (instant
+0-second failure, no job logs). Two independent faults, both introduced by
+PR #8 (`ci: add coverage reporting + Codecov upload`):
+
+1. The Codecov step's `if:` expression uses **double-quoted** string
+   literals, which is invalid GitHub Actions expression syntax — the whole
+   workflow file fails to parse. Fix: single-quote the string literals in
+   that `if:`.
+2. Once the file parses, the `pytest` invocation passes `--cov=src`
+   `--cov-report=...` flags but `pytest-cov` is **not** in the CI install
+   step, so pytest aborts with `unrecognized arguments: --cov`. Fix: add
+   `pytest-cov` to the install line.
+
+A previous fix attempt (`loop/claude/2026-08-24/fix-broken-ci-workflow-syntax`,
+PR #14) reproduced both faults, fixed them in one commit, and went green on
+its own PR run — but was closed unreviewed as stale on 2026-09-01. The branch
+is not deleted; its single commit is the fix. Recover from there rather than
+rediscovering.
+
+Until this lands, **no PR merged since #8 has had a real CI signal** — treat
+the test status of #9–#13 as unverified. A permanently-red `main` also blocks
+every auto-merge in this repo.
+
+### 2. API routes at 0% coverage
 Every file under `api/` — `auth.py`, `database.py`, `main.py`, `models.py`,
 `routes/alerts.py`, `routes/products.py`, `routes/thresholds.py` — has zero
 test coverage. The 17 existing tests cover only `src/margin_engine.py` and
@@ -50,7 +74,7 @@ real FastAPI app with an isolated test database.
 Priority: `routes/products.py` (47 lines, 0%) is the largest API route
 and the most likely to have a real bug. Start there.
 
-### 2. Ruff has no project config — 48 errors, 8 are real bugs
+### 3. Ruff has no project config — 48 errors, 8 are real bugs
 `ruff` runs in CI (`.github/workflows/ci.yml` line 40) but there is no
 `ruff.toml` or `[tool.ruff]` section in `pyproject.toml`. Ruff uses its
 default rules, which include style checks that produce 48 errors. 28 are
@@ -62,14 +86,14 @@ section to `pyproject.toml` (match the error-only pattern from
 kinz-competitor-intelligence: `select = ["E9", "F", "B"]`) to stop CI
 from reporting style noise.
 
-### 3. ~~Airflow DAG is 488 lines with zero tests~~ ✅
+### 4. ~~Airflow DAG is 488 lines with zero tests~~ ✅
 Extracted pure logic (`get_execution_date`, `validate_price_data`,
 `build_margin_records`, `build_alert_data`) from the DAG into
 `src/dag_logic.py`. 20 new tests in `tests/test_dag_logic.py`.
 The DAG now imports and calls these; only DB I/O + Airflow operator
 wiring remains in the DAG file. 54 tests pass (was 34).
 
-### 4. ~~Dashboard is 449 lines with zero tests~~ ✅
+### 5. ~~Dashboard is 449 lines with zero tests~~ ✅
 Extracted pure computation (`compute_adjusted_values`,
 `build_scenario_summary`, `fmt_delta`) from `dashboard/app.py` into
 `dashboard/analysis.py`. 17 new tests in `tests/test_dashboard_analysis.py`
@@ -79,14 +103,14 @@ functions via inline imports.
 
 ## Next
 
-### 5. ~~No CLAUDE.md or .claude/commands/improve.md~~ ✅
+### 6. ~~No CLAUDE.md or .claude/commands/improve.md~~ ✅
 Added `CLAUDE.md` with ground rules (never push to main, squash-merge
 only, test commands), architecture overview, known traps
 (commit-before-fetch, `::text` casts), and loop-engine integration
 notes. The `.claude/commands/improve.md` is deferred — the closed-loop
 works fine without it since the loop engine drives the PR cycle.
 
-### 6. Requirements use `>=` throughout — no pins
+### 7. Requirements use `>=` throughout — no pins
 All four `requirements-*.txt` files use `>=` with no upper bound. This
 caused a real break in kinz-competitor-intelligence (streamlit 1.60→1.61
 changed `AppTest.from_file` behavior). Consider pinning exact versions
