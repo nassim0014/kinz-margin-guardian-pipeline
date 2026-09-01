@@ -1,12 +1,20 @@
-"""SQLAlchemy database connection."""
+"""SQLAlchemy database connection.
+
+The engine is created by the shared toolkit ``astk.db.make_engine`` rather than
+a local ``create_engine`` call: it is cached per URL, defaults to
+``pool_pre_ping=True``, and is SQLite-in-memory safe (``StaticPool`` +
+``check_same_thread=False``) so tests that point ``DATABASE_URL`` at SQLite
+behave the same as production Postgres. ``healthcheck``/``wait_for_db`` from the
+same module back the ``/health`` endpoint and the startup readiness check.
+"""
 from __future__ import annotations
 
-from sqlalchemy import create_engine
+from astk.db import make_engine
 from sqlalchemy.orm import sessionmaker, DeclarativeBase
 
 from src.config import DATABASE_URL
 
-engine = create_engine(DATABASE_URL, pool_pre_ping=True)
+engine = make_engine(DATABASE_URL)
 SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
 
 
