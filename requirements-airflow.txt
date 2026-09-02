@@ -1,11 +1,12 @@
 # The base apache/airflow:2.9.3-python3.11 image already has the heavy
 # dependencies the DAGs need (SQLAlchemy, pandas, psycopg, etc.).
 #
-# One addition: the DAG imports src/alert_manager, which now delegates Slack
-# delivery to the shared toolkit `astk.alerts`. The scheduler/worker image must
-# therefore be able to import `astk`. astk's core pulls in pydantic-settings and
-# typer on top of what the image already has.
+# One addition: the DAG imports src/alert_manager and uses astk.db, so the
+# scheduler/worker image must be able to import `astk`. astk's core pulls in
+# pydantic-settings and typer on top of what the image already has.
 #
-# astk is a PRIVATE repo, so the image build needs credentials (a PAT or SSH
-# key) to install it — e.g. build with a mounted --secret, or vendor a wheel.
+# astk is a PRIVATE repo. The image installs it via a BuildKit secret named
+# ASTK_PAT (a GitHub token) — see airflow/Dockerfile and docker-compose.yml.
+# Non-Docker installs need git credentials for the private repo on PATH, or
+# astk already importable (e.g. on PYTHONPATH).
 analytics-service-toolkit @ git+https://github.com/nassim0014/analytics-service-toolkit@main

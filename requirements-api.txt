@@ -12,6 +12,8 @@ slowapi>=0.1.9
 pandas>=2.0
 
 # Shared toolkit — api/database uses astk.db.make_engine and /health uses
-# astk.db.healthcheck. Private repo: the build environment needs credentials
-# (a PAT or SSH key), or astk must be published.
+# astk.db.healthcheck. astk is a PRIVATE repo; the image installs it via a
+# BuildKit secret named ASTK_PAT (a GitHub token) — see api/Dockerfile and
+# docker-compose.yml. Non-Docker installs need git credentials for the private
+# repo on PATH, or astk already importable (e.g. on PYTHONPATH).
 analytics-service-toolkit @ git+https://github.com/nassim0014/analytics-service-toolkit@main
