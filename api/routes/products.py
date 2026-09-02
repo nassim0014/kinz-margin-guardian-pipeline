@@ -1,7 +1,7 @@
 """Product CRUD routes — manage KINZ products and COGS."""
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import text
@@ -12,6 +12,17 @@ from api.database import get_db
 from api.models import ProductCreate, ProductUpdate, ProductResponse, MarginResponse
 
 router = APIRouter()
+
+
+def _naive_utcnow() -> datetime:
+    """Current UTC time as a NAIVE datetime.
+
+    Replaces datetime.utcnow() (deprecated, scheduled for removal). The
+    updated_at column stores naive UTC, so we compute in UTC explicitly and
+    drop the tzinfo rather than writing an aware datetime that would mix
+    representations in one column.
+    """
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 @router.get("", response_model=list[ProductResponse])
@@ -55,7 +66,7 @@ def update_product(product_id: int, prod: ProductUpdate, db: Session = Depends(g
         raise HTTPException(status_code=400, detail="No fields to update")
 
     fields.append("updated_at = :now")
-    params["now"] = datetime.utcnow()
+    params["now"] = _naive_utcnow()
 
     db.execute(text(f"UPDATE products SET {', '.join(fields)} WHERE id = :pid"), params)
     db.commit()
@@ -74,7 +85,7 @@ def update_product(product_id: int, prod: ProductUpdate, db: Session = Depends(g
 def deactivate_product(product_id: int, db: Session = Depends(get_db), user=Depends(get_current_user)):
     """Deactivate a product (soft delete)."""
     db.execute(text("UPDATE products SET active = false, updated_at = :now WHERE id = :pid"),
-               {"pid": product_id, "now": datetime.utcnow()})
+               {"pid": product_id, "now": _naive_utcnow()})
     db.commit()
     return {"status": "deactivated", "product_id": product_id}
 
