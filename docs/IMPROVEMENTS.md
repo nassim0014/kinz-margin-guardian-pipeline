@@ -39,52 +39,63 @@ docker compose up --build -d
 
 ## Now
 
-### 1. 🔴 CI workflow on `main` is broken — no passing run since 2026-08-21
-`.github/workflows/ci.yml` fails to load on every push to `main` (instant
-0-second failure, no job logs). Two independent faults, both introduced by
-PR #8 (`ci: add coverage reporting + Codecov upload`):
+### 8. 🔴 CI `docker` job fails — private `astk` dep can't install without a secret
+Once the workflow parses again (item 1), the second job — `docker` ("Docker
+build smoke test") — fails. `api/Dockerfile` runs
+`pip install -r requirements-api.txt`, and the astk migration (PRs #15/#16,
+merged 2026-09-01) added
+`analytics-service-toolkit @ git+https://github.com/nassim0014/analytics-service-toolkit@main`
+to that file. That repo is **private**. The CI step runs a plain
+`docker build` with no `--secret id=astk_pat`, so the `if [ -s /run/secrets/astk_pat ]`
+guard in the Dockerfile is false, pip tries an unauthenticated clone and
+gets 404.
 
-1. The Codecov step's `if:` expression uses **double-quoted** string
-   literals, which is invalid GitHub Actions expression syntax — the whole
-   workflow file fails to parse. Fix: single-quote the string literals in
-   that `if:`.
-2. Once the file parses, the `pytest` invocation passes `--cov=src`
-   `--cov-report=...` flags but `pytest-cov` is **not** in the CI install
-   step, so pytest aborts with `unrecognized arguments: --cov`. Fix: add
-   `pytest-cov` to the install line.
+This was masked until now because the workflow never parsed. Fixing it is an
+**owner decision**: it needs an `ASTK_PAT` repo secret (a GitHub token with
+read access to `analytics-service-toolkit`) plus `DOCKER_BUILDKIT=1` and
+`--secret id=astk_pat,env=ASTK_PAT` on both `docker build` invocations in
+`ci.yml`. Do not add the secret plumbing without the owner provisioning the
+secret — a half-wired secret still 404s and looks like a code bug.
 
-A previous fix attempt (`loop/claude/2026-08-24/fix-broken-ci-workflow-syntax`,
-PR #14) reproduced both faults, fixed them in one commit, and went green on
-its own PR run — but was closed unreviewed as stale on 2026-09-01. The branch
-is not deleted; its single commit is the fix. Recover from there rather than
-rediscovering.
+Interim option the owner may prefer: drop the `docker` job entirely (the
+`docker compose` path is already exercised locally) or mark it
+`continue-on-error: true` until the secret exists.
 
-Until this lands, **no PR merged since #8 has had a real CI signal** — treat
-the test status of #9–#13 as unverified. A permanently-red `main` also blocks
-every auto-merge in this repo.
+### 1. ~~🔴 CI workflow on `main` is broken — no passing run since 2026-08-21~~ ✅
+Fixed in PR #<TBD>. Three faults, not the two originally filed:
 
-### 2. API routes at 0% coverage
-Every file under `api/` — `auth.py`, `database.py`, `main.py`, `models.py`,
-`routes/alerts.py`, `routes/products.py`, `routes/thresholds.py` — has zero
-test coverage. The 17 existing tests cover only `src/margin_engine.py` and
-`src/alert_manager.py`. Same shape as kinz-competitor-intelligence's
-coverage gap (closed in PRs #43/#44 there): use `TestClient` against the
-real FastAPI app with an isolated test database.
+1. Codecov step's `if:` used **double-quoted** string literals (invalid GHA
+   expression syntax) → whole file failed to parse. Now single-quoted.
+2. `pytest` was passed `--cov` flags but `pytest-cov` was missing from the
+   CI install line. Added.
+3. *(new — surfaced by the astk migration after this item was filed)*
+   `tests/test_alert_manager.py` did a hard top-level `from astk.alerts …`,
+   and `src/alert_manager.py` imported astk at module scope, so the pure
+   helper `format_alert_message` (used by `src/dag_logic.py`) dragged the
+   private toolkit in. 6 `test_dag_logic.py::TestBuildAlertData` tests failed
+   at collection in the lightweight CI env. Fixed: `alert_manager` degrades
+   gracefully when astk is absent (`try/except ModuleNotFoundError`), and the
+   alert-delivery tests `pytest.importorskip("astk")` like `test_api.py` does
+   for fastapi.
 
-Priority: `routes/products.py` (47 lines, 0%) is the largest API route
-and the most likely to have a real bug. Start there.
+PR #14's single commit was **not** reused — it committed a stray
+`coverage.xml` artifact and predated fault 3. `coverage.xml` is now in
+`.gitignore`.
 
-### 3. Ruff has no project config — 48 errors, 8 are real bugs
-`ruff` runs in CI (`.github/workflows/ci.yml` line 40) but there is no
-`ruff.toml` or `[tool.ruff]` section in `pyproject.toml`. Ruff uses its
-default rules, which include style checks that produce 48 errors. 28 are
-auto-fixable.
+Verified: CI-equivalent env (no astk) → 48 passed, 24 skipped; full dev env
+(astk installed) → 79 passed, 0 skipped. Touches `.github/workflows/**` so it
+cannot auto-merge — left for review.
 
-The 8 **F-category** errors (unused imports) are real code smell — fixed
-in this PR. The remaining 40 are style opinions. Add a `[tool.ruff]`
-section to `pyproject.toml` (match the error-only pattern from
-kinz-competitor-intelligence: `select = ["E9", "F", "B"]`) to stop CI
-from reporting style noise.
+### 2. ~~API routes at 0% coverage~~ ✅ (already done — backlog was stale)
+Closed by PR #2 (`test: cover API routes 0%→60% …`). Verified 2026-09-02:
+`api/routes/products.py` 100%, `alerts.py` 100%, `thresholds.py` 100%,
+`api/main.py` 100%, `api/models.py` 100%. `tests/test_api.py` has ~24 tests
+driving the real FastAPI app against an isolated SQLite DB.
+
+### 3. ~~Ruff has no project config — 48 errors~~ ✅ (already done — backlog was stale)
+`[tool.ruff]` with `select = ["E9", "F", "B"]` and the B008/`__init__`/tests
+per-file-ignores has been in `pyproject.toml` since PR #2 (`e117725`).
+`ruff check src/ api/ tests/` → "All checks passed!" as of 2026-09-02.
 
 ### 4. ~~Airflow DAG is 488 lines with zero tests~~ ✅
 Extracted pure logic (`get_execution_date`, `validate_price_data`,
@@ -120,6 +131,15 @@ change.
 ---
 
 ## Done
+
+- **PR #<TBD>** — Item 1: repaired the CI workflow (parse fault + missing
+  `pytest-cov` + the astk-import collection failure the astk migration added
+  after the item was filed). `alert_manager` now imports without the private
+  toolkit; alert-delivery tests `importorskip("astk")`. `coverage.xml`
+  gitignored. Verified no-astk → 48 passed / 24 skipped, with-astk → 79
+  passed / 0 skipped. Also verified items 2 and 3 were already done by PR #2
+  (stale backlog entries, now marked). Filed item 8 (CI `docker` job still
+  red — needs an owner-provisioned `ASTK_PAT` secret).
 
 - **PR #1 (this PR)** — Created `docs/IMPROVEMENTS.md` as the first-cycle
   deliverable, AND fixed the 8 unused-import (F401) errors as a same-PR
