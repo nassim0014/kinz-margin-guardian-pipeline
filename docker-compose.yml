@@ -31,6 +31,8 @@ services:
     build:
       context: .
       dockerfile: airflow/Dockerfile
+      secrets:
+        - astk_pat
     container_name: kinz-airflow-init
     env_file: .env
     depends_on:
@@ -62,6 +64,8 @@ services:
     build:
       context: .
       dockerfile: airflow/Dockerfile
+      secrets:
+        - astk_pat
     container_name: kinz-airflow-web
     env_file: .env
     depends_on:
@@ -98,6 +102,8 @@ services:
     build:
       context: .
       dockerfile: airflow/Dockerfile
+      secrets:
+        - astk_pat
     container_name: kinz-airflow-scheduler
     env_file: .env
     depends_on:
@@ -125,6 +131,8 @@ services:
     build:
       context: .
       dockerfile: api/Dockerfile
+      secrets:
+        - astk_pat
     container_name: kinz-api
     env_file: .env
     depends_on:
@@ -167,6 +175,14 @@ services:
     command: streamlit run dashboard/app.py --server.port 8501 --server.address 0.0.0.0
     networks:
       - kinz-net
+
+# Build-time secret: a GitHub token with read access to the private
+# analytics-service-toolkit (astk) repo, so the api/airflow images can pip
+# install it. Provided via the ASTK_PAT environment variable at build time —
+# it is a BuildKit build secret, never an env var inside the running containers.
+secrets:
+  astk_pat:
+    environment: ASTK_PAT
 
 volumes:
   pgdata:
