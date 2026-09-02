@@ -18,7 +18,18 @@ import logging
 from datetime import datetime, timezone
 from typing import Optional
 
-from astk.alerts import Alert, SlackNotifier
+# astk lives in the private ``analytics-service-toolkit`` repo. Production
+# images install it via a BuildKit secret, but the lightweight CI environment
+# (and anything that only needs the pure helper ``format_alert_message`` — e.g.
+# the Airflow DAG logic in ``src/dag_logic.py``) does not. Degrade gracefully:
+# import it when available, and let the delivery helpers fail loudly only if
+# they are actually called without it. ``send_slack_alert`` already treats a
+# missing/broken notifier as "log instead, never raise".
+try:
+    from astk.alerts import Alert, SlackNotifier
+except ModuleNotFoundError:  # pragma: no cover - exercised only in the lightweight CI env
+    Alert = None
+    SlackNotifier = None
 
 logger = logging.getLogger(__name__)
 

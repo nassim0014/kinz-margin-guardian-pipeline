@@ -4,8 +4,19 @@ Alerting is delegated to ``astk.alerts`` (shared toolkit): ``send_slack_alert``
 builds an ``astk.alerts.Alert`` and posts it via ``astk.alerts.SlackNotifier``,
 which retries on 429/5xx with backoff and never raises into the caller. These
 tests exercise the adapter, not astk's own retry logic (that is tested in astk).
+
+Note: these tests (and ``src.alert_manager`` itself) need the private
+``analytics-service-toolkit`` (``astk``) installed. The lightweight CI install
+does not have it, so the entire module skips gracefully via
+``pytest.importorskip`` rather than failing collection — same pattern as
+``test_api.py`` for fastapi.
 """
 from unittest.mock import patch, MagicMock
+
+import pytest
+
+# Skip the whole module if astk isn't importable (lightweight CI install).
+pytest.importorskip("astk")
 
 from astk.alerts import AlertResult
 
