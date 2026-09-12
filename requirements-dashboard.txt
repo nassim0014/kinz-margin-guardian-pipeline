@@ -7,3 +7,11 @@ streamlit>=1.30
 plotly>=5.18
 pandas>=2.0
 numpy>=1.24
+
+# Shared toolkit — dashboard/app.py's get_engine() uses astk.db.make_engine,
+# matching api/database.py two files over instead of hand-rolling
+# create_engine(). astk is a PRIVATE repo; the image installs it via a
+# BuildKit secret named ASTK_PAT (a GitHub token) — see dashboard/Dockerfile
+# and docker-compose.yml. Non-Docker installs need git credentials for the
+# private repo on PATH, or astk already importable (e.g. on PYTHONPATH).
+analytics-service-toolkit @ git+https://github.com/nassim0014/analytics-service-toolkit@main
