@@ -160,6 +160,8 @@ services:
     build:
       context: .
       dockerfile: dashboard/Dockerfile
+      secrets:
+        - astk_pat
     container_name: kinz-dashboard
     env_file: .env
     depends_on:
