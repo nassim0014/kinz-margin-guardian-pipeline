@@ -17,7 +17,8 @@ import pandas as pd
 import plotly.graph_objects as go
 import plotly.express as px
 import streamlit as st
-from sqlalchemy import create_engine, text
+from astk.db import make_engine
+from sqlalchemy import text
 
 # ---------------------------------------------------------------------
 # Config
@@ -39,7 +40,11 @@ from src.config import B2B_DISCOUNT_FACTOR  # noqa: E402
 
 @st.cache_resource
 def get_engine():
-    return create_engine(DATABASE_URL)
+    # astk.db.make_engine, not a bare create_engine(): api/database.py two
+    # files over already builds its engine this way, and make_engine adds
+    # pool_pre_ping plus (as of astk PR sqlite-wal-busy-timeout-in-make-engine)
+    # WAL + busy_timeout handling if DATABASE_URL is ever pointed at SQLite.
+    return make_engine(DATABASE_URL)
 
 
 @st.cache_data(ttl=60)
