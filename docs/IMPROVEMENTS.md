@@ -39,6 +39,40 @@ docker compose up --build -d
 
 ## Now
 
+### 9. 🔴 CI is still red on `main` — item 1's astk fix missed `src/config.py`
+Found by the repo-review-loop, 2026-09-13, checking `main` CI directly
+(latest run as of this check: `Python 3.11`/`Python 3.12` jobs both fail,
+`Docker build smoke test` passes). Item 1 (below, marked done) fixed
+`src/alert_manager.py`'s unconditional `from astk.alerts import …`, but
+**`src/config.py` has the identical problem and was not touched**:
+
+```python
+# src/config.py, module scope, no try/except or lazy import:
+from astk.settings import BaseServiceSettings, load_settings
+```
+
+`src/config.py` is the shared settings module — `src/margin_engine.py`
+imports it directly, and it's almost certainly on the import path for
+`src/dag_logic.py` and `dashboard/analysis.py` too (all three of
+`tests/test_dag_logic.py`, `tests/test_dashboard_analysis.py`, and
+`tests/test_margin_engine.py` currently fail at **collection** with
+`ModuleNotFoundError: No module named 'astk'` in the lightweight CI env,
+which deliberately doesn't install the private toolkit). Net effect: `main`
+has had zero passing `Python 3.11`/`3.12` CI runs since at least
+2026-09-02 (10+ days) — the item-1 fix narrowed the blast radius but did
+not clear it.
+
+Same shape as the `alert_manager.py` fix should work here: make the astk
+import lazy/optional in `config.py` (e.g. import inside the function that
+builds settings, or `try/except ModuleNotFoundError` with a clear fallback
+message), and have `tests/test_config.py` (if one exists) or the affected
+test modules `pytest.importorskip("astk")` around the parts that need real
+settings — mirroring how `tests/test_api.py` already handles this for
+fastapi. Verify with the same before/after check item 1 used: CI-equivalent
+env (no astk) should show these three files collecting again (even if some
+individual tests skip), and the full dev env (astk installed) should still
+show 79 passed / 0 skipped.
+
 ### 8. 🔴 CI `docker` job fails — private `astk` dep can't install without a secret
 Once the workflow parses again (item 1), the second job — `docker` ("Docker
 build smoke test") — fails. `api/Dockerfile` runs
