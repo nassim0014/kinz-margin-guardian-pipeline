@@ -39,61 +39,77 @@ docker compose up --build -d
 
 ## Now
 
-### 9. 🔴 CI is still red on `main` — item 1's astk fix missed `src/config.py`
-Found by the repo-review-loop, 2026-09-13, checking `main` CI directly
-(latest run as of this check: `Python 3.11`/`Python 3.12` jobs both fail,
-`Docker build smoke test` passes). Item 1 (below, marked done) fixed
-`src/alert_manager.py`'s unconditional `from astk.alerts import …`, but
-**`src/config.py` has the identical problem and was not touched**:
+### 8. 🔴 CI `docker` job's "pass" is a side effect of an unexplained repo-visibility change — not a real fix
+`api/Dockerfile` runs `pip install -r requirements-api.txt`, which does an
+unauthenticated `git+https` clone of `analytics-service-toolkit` unless the
+BuildKit `astk_pat` secret is mounted (see the Dockerfile comment). No such
+secret is configured on this repo. This job was red for exactly that reason
+until ~2026-09-12.
 
-```python
-# src/config.py, module scope, no try/except or lazy import:
-from astk.settings import BaseServiceSettings, load_settings
-```
+**As of the 2026-09-13 closed-loop cycle it is green again — but not because
+anyone provisioned the secret.** `analytics-service-toolkit` itself was found
+**unexpectedly public** on GitHub (recorded private as of 2026-09-10; flagged
+loop-wide, not repo-specific — see that cycle's report,
+`NEEDS YOUR DECISION`). An unauthenticated clone of a public repo just works,
+which is the entire reason `docker build` stopped failing — `git ls-remote
+https://github.com/nassim0014/analytics-service-toolkit.git` succeeds with no
+credentials at all right now. **If that visibility is reverted (which it
+should be, since no loop or agent made the change deliberately), this job
+goes red again immediately**, exactly as originally filed below.
 
-`src/config.py` is the shared settings module — `src/margin_engine.py`
-imports it directly, and it's almost certainly on the import path for
-`src/dag_logic.py` and `dashboard/analysis.py` too (all three of
-`tests/test_dag_logic.py`, `tests/test_dashboard_analysis.py`, and
-`tests/test_margin_engine.py` currently fail at **collection** with
-`ModuleNotFoundError: No module named 'astk'` in the lightweight CI env,
-which deliberately doesn't install the private toolkit). Net effect: `main`
-has had zero passing `Python 3.11`/`3.12` CI runs since at least
-2026-09-02 (10+ days) — the item-1 fix narrowed the blast radius but did
-not clear it.
-
-Same shape as the `alert_manager.py` fix should work here: make the astk
-import lazy/optional in `config.py` (e.g. import inside the function that
-builds settings, or `try/except ModuleNotFoundError` with a clear fallback
-message), and have `tests/test_config.py` (if one exists) or the affected
-test modules `pytest.importorskip("astk")` around the parts that need real
-settings — mirroring how `tests/test_api.py` already handles this for
-fastapi. Verify with the same before/after check item 1 used: CI-equivalent
-env (no astk) should show these three files collecting again (even if some
-individual tests skip), and the full dev env (astk installed) should still
-show 79 passed / 0 skipped.
-
-### 8. 🔴 CI `docker` job fails — private `astk` dep can't install without a secret
-Once the workflow parses again (item 1), the second job — `docker` ("Docker
-build smoke test") — fails. `api/Dockerfile` runs
-`pip install -r requirements-api.txt`, and the astk migration (PRs #15/#16,
-merged 2026-09-01) added
-`analytics-service-toolkit @ git+https://github.com/nassim0014/analytics-service-toolkit@main`
-to that file. That repo is **private**. The CI step runs a plain
-`docker build` with no `--secret id=astk_pat`, so the `if [ -s /run/secrets/astk_pat ]`
-guard in the Dockerfile is false, pip tries an unauthenticated clone and
-gets 404.
-
-This was masked until now because the workflow never parsed. Fixing it is an
-**owner decision**: it needs an `ASTK_PAT` repo secret (a GitHub token with
+Original filing, still the actual owner decision needed regardless of the
+visibility question: it needs an `ASTK_PAT` repo secret (a GitHub token with
 read access to `analytics-service-toolkit`) plus `DOCKER_BUILDKIT=1` and
 `--secret id=astk_pat,env=ASTK_PAT` on both `docker build` invocations in
 `ci.yml`. Do not add the secret plumbing without the owner provisioning the
-secret — a half-wired secret still 404s and looks like a code bug.
-
-Interim option the owner may prefer: drop the `docker` job entirely (the
-`docker compose` path is already exercised locally) or mark it
+secret — a half-wired secret still 404s and looks like a code bug. Interim
+option the owner may prefer: drop the `docker` job entirely (the `docker
+compose` path is already exercised locally) or mark it
 `continue-on-error: true` until the secret exists.
+
+### 9. ~~CI still red on `main` — item 1's astk fix missed `src/config.py`~~ ✅
+Found by the repo-review-loop, 2026-09-13, checking `main` CI directly.
+Confirmed and fixed by the closed-loop the same day. `src/config.py` had the
+identical unconditional-import problem as item 1's `alert_manager.py` fault,
+just not caught at the time because item 1 was scoped to the failures visible
+at that moment: `from astk.settings import BaseServiceSettings, load_settings`
+at module scope, with `GuardianSettings(BaseServiceSettings)` and
+`settings = load_settings(GuardianSettings)` evaluated eagerly. `src/margin_engine.py`,
+`src/dag_logic.py` and `dashboard/analysis.py` all import from `src.config` at
+module scope, so all three of `tests/test_dag_logic.py`,
+`tests/test_dashboard_analysis.py` and `tests/test_margin_engine.py` failed at
+**collection** (not just at test-run) with `ModuleNotFoundError: No module
+named 'astk'` in the lightweight CI env — which aborts the entire pytest
+session (`Interrupted: 3 errors during collection`, exit code 2), so none of
+the 39+ tests in the suite ran at all, not just the three affected files.
+
+Unlike `alert_manager.py` (whose astk-dependent code is only reached lazily,
+inside function bodies), `config.py`'s constants are consumed eagerly at
+import time by three different modules, so a bare `try/except` around the
+import alone isn't enough — the fallback branch has to actually populate
+every constant. Restored the exact bare `os.getenv` calls (same env var
+names, same defaults) this module used before the astk migration
+(`git show 5368ef5:src/config.py`) as the `except ModuleNotFoundError` branch.
+Every constant resolves to the same value whether or not astk is installed;
+only the pydantic validation layer is skipped when it isn't.
+
+Verified: CI-equivalent env (`.venv`, no astk) → 48 passed, 24 skipped —
+back to item 1's baseline. Full dev env (astk installed, via a venv with
+`analytics-service-toolkit` installed editable) → 79 passed, 0 skipped —
+unchanged from item 1. Proved the regression: reverted to the unconditional
+import (`git stash`), confirmed the same 3-collection-error/exit-code-2
+failure reproduces exactly, restored (`git stash pop`).
+
+**Noticed but not fixed here** (scope discipline — added below as item 11):
+even with this fix, the 23 `tests/test_api.py` tests and 1
+`test_alert_manager.py` test still *skip* in the lightweight CI env — via
+`tests/conftest.py`'s `client` fixture, which catches `ImportError` from
+`api.database` (which hard-imports `astk.db.make_engine`) and skips with the
+message "fastapi not installed", even though fastapi *is* installed and the
+real cause is the same missing-astk situation this item just fixed for
+`config.py`. The tests still don't run in CI; they just don't abort the
+whole session anymore, and the reason they're skipped is currently reported
+wrong.
 
 ### 1. ~~🔴 CI workflow on `main` is broken — no passing run since 2026-08-21~~ ✅
 Fixed in PR #<TBD>. Three faults, not the two originally filed:
@@ -162,9 +178,47 @@ changed `AppTest.from_file` behavior). Consider pinning exact versions
 for reproducibility — but this is an owner decision, not a unilateral
 change.
 
+### 11. API tests silently skip in CI with a wrong reason
+`tests/conftest.py`'s `client` fixture wraps `from api.database import
+get_db` / `from api.main import app` in `try/except ImportError:
+pytest.skip("fastapi not installed — skipping API tests")`. In the
+lightweight CI env fastapi **is** installed (CI installs it explicitly —
+see item 2), but `api/database.py` hard-imports `astk.db.make_engine` at
+module scope with no fallback, so the import still raises (a
+`ModuleNotFoundError`, which is an `ImportError` subclass) and the fixture
+catches it — skipping all 23 `test_api.py` tests and reporting the wrong
+cause. Net effect: the API route tests item 2 added have not actually run
+in CI since the astk migration (PRs #15/#16), only silently skipped, and
+the skip message actively points at the wrong dependency.
+
+Same shape as item 9's `config.py` fix, but for `api/database.py`: either
+give it the same `try/except ModuleNotFoundError` fallback (needs a
+non-astk `make_engine` equivalent — the module docstring lists exactly what
+astk's version buys: cached-per-URL, `pool_pre_ping=True`,
+SQLite-in-memory-safe), or at minimum split the `client` fixture's catch so
+a missing-astk `ImportError` reports the real cause instead of "fastapi not
+installed". Left unranked-highest deliberately: item 9 already restored CI
+to a *passing* (not deceptive) state; this is a message-accuracy /
+test-execution-completeness issue on top of that, not a currently-red build.
+
 ---
 
 ## Done
+
+- **PR #<TBD> (this PR)** — Item 9: `src/config.py` had the same unconditional
+  `from astk.settings import …` fault item 1 fixed in `alert_manager.py`,
+  just not caught at the time. Fixed with the same `try/except
+  ModuleNotFoundError` pattern, except the fallback branch has to actually
+  populate every constant (config.py's are consumed eagerly at import time,
+  unlike alert_manager's lazily-used helpers) — restored the exact bare
+  `os.getenv` calls this module used pre-migration. Verified: no-astk → 48
+  passed / 24 skipped (item 1's baseline, restored); with-astk → 79 passed /
+  0 skipped (unchanged). Proved the regression by reverting to the
+  unconditional import and confirming the identical 3-collection-error
+  abort, then restoring. Also corrected item 8's record (the `docker` job's
+  current green state is a side effect of `analytics-service-toolkit`'s
+  unexplained public visibility, not a real fix — see that item) and filed
+  item 11 (API tests skip in CI with a misleading reason).
 
 - **PR #<TBD>** — Item 1: repaired the CI workflow (parse fault + missing
   `pytest-cov` + the astk-import collection failure the astk migration added
