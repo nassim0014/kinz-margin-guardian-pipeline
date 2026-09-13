@@ -205,7 +205,7 @@ test-execution-completeness issue on top of that, not a currently-red build.
 
 ## Done
 
-- **PR #<TBD> (this PR)** — Item 9: `src/config.py` had the same unconditional
+- **PR #23 (this PR)** — Item 9: `src/config.py` had the same unconditional
   `from astk.settings import …` fault item 1 fixed in `alert_manager.py`,
   just not caught at the time. Fixed with the same `try/except
   ModuleNotFoundError` pattern, except the fallback branch has to actually
