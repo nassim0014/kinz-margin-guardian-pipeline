@@ -162,6 +162,20 @@ cover adjustment math, delta formatting, and the full scenario summary
 builder (alert states, margin direction). app.py now calls the extracted
 functions via inline imports.
 
+### 12. README claims "Slack/Email alerts" but no email alerting exists anywhere in the code   `source: docs`
+
+`README.md` line 3 (the top-line project description) says the pipeline "triggers Slack/Email alerts when margins drop below critical thresholds." `grep -rin "email|smtp" src/ api/ airflow/ dashboard/` finds zero email-sending code — only unrelated hits (`api/models.py`'s user `email` field, `api/auth.py` login, and Airflow's built-in `email_on_failure`/`email_on_retry` DAG defaults, both set to `False`). `src/alert_manager.py`, the actual alerting module, implements only `send_slack_alert`. This misstates a real capability to anyone reading the README as documentation of what the pipeline does.
+
+### 13. Three margin/retention config knobs are env-overridable but undocumented in `.env.example`   `source: docs`
+
+`src/config.py`'s non-astk fallback branch (lines 97-98, 100) reads `DEFAULT_ALERT_THRESHOLD_PCT`, `B2B_DISCOUNT_FACTOR`, and `PRICE_RETENTION_DAYS` via `os.getenv(...)` with defaults (40.0, 0.85, 90) — and the astk branch (lines 58-59, 62) exposes the same three as `GuardianSettings` fields, so they're real, supported overrides in both code paths. None of the three appear in `.env.example`, which documents `DATABASE_URL`, `JWT_*`, `SLACK_WEBHOOK_URL`, `API_*`, and Airflow vars but stops there. These are the actual margin-threshold and B2B-discount-factor knobs for a margin/pricing-math repo — worth documenting alongside the rest.
+
+### 14. No `.github/dependabot.yml` — dependency updates have no automation   `source: deps`
+
+`ls .github/` shows only `ISSUE_TEMPLATE/` and `workflows/ci.yml`; there is no dependabot config, and `gh pr list` returns zero open PRs, consistent with no bot running. `pip list --outdated` currently shows only minor/patch drift (numpy, pandas, SQLAlchemy, PyJWT), nothing alarming today — but nothing will ever surface automatically without this file. Separate from item 7's "no version pins" decision, which is about pinning policy, not the absence of the update-detection mechanism itself.
+
+Loop-Agent: backlog-refresh / claude / laptop
+
 ## Next
 
 ### 6. ~~No CLAUDE.md or .claude/commands/improve.md~~ ✅
