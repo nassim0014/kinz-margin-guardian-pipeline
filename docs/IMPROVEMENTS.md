@@ -162,9 +162,11 @@ cover adjustment math, delta formatting, and the full scenario summary
 builder (alert states, margin direction). app.py now calls the extracted
 functions via inline imports.
 
-### 12. README claims "Slack/Email alerts" but no email alerting exists anywhere in the code   `source: docs`
+### 12. ~~README claims "Slack/Email alerts" but no email alerting exists anywhere in the code~~ ✅ (done 2026-09-25)   `source: docs`
 
-`README.md` line 3 (the top-line project description) says the pipeline "triggers Slack/Email alerts when margins drop below critical thresholds." `grep -rin "email|smtp" src/ api/ airflow/ dashboard/` finds zero email-sending code — only unrelated hits (`api/models.py`'s user `email` field, `api/auth.py` login, and Airflow's built-in `email_on_failure`/`email_on_retry` DAG defaults, both set to `False`). `src/alert_manager.py`, the actual alerting module, implements only `send_slack_alert`. This misstates a real capability to anyone reading the README as documentation of what the pipeline does.
+`README.md` line 3 (the top-line project description) said the pipeline "triggers Slack/Email alerts when margins drop below critical thresholds." `grep -rin "email|smtp" src/ api/ airflow/ dashboard/` finds zero email-sending code — only unrelated hits (`api/models.py`'s user `email` field, `api/auth.py` login, and Airflow's built-in `email_on_failure`/`email_on_retry` DAG defaults, both set to `False`). `src/alert_manager.py`, the actual alerting module, implements only `send_slack_alert`.
+
+Fixed: dropped "/Email" from the claim (now "triggers Slack alerts when margins drop below critical thresholds"). Added `tests/test_readme_claims.py`, a regression test that extracts the claimed channel(s) from the README's top-line description and the `send_<channel>_alert` functions actually defined in `src/alert_manager.py`, and fails if the README ever claims a channel the code doesn't back up (plus a sanity check the other way: it also fails once `send_email_alert` is added, as a nudge to update the README claim at the same time). Verified the test would have caught this: reverted the README line (`git stash`), confirmed `test_readme_alert_claim_matches_implemented_channels` fails with `assert {'email', 'slack'} <= {'slack'}`, then restored (`git stash pop`) and confirmed it passes. Full suite: 50 passed, 24 skipped (was 48 passed, 24 skipped — the 24 skips are item 11's pre-existing, unrelated API-test-skip issue). `ruff check src/ api/ tests/` — all checks passed.
 
 ### 13. Three margin/retention config knobs are env-overridable but undocumented in `.env.example`   `source: docs`
 
@@ -219,7 +221,18 @@ test-execution-completeness issue on top of that, not a currently-red build.
 
 ## Done
 
-- **PR #23 (this PR)** — Item 9: `src/config.py` had the same unconditional
+- **PR #<TBD> (this PR)** — Item 12: README's top-line description claimed
+  "Slack/Email alerts" while `src/alert_manager.py` only ever implemented
+  Slack delivery. Dropped the Email claim and added
+  `tests/test_readme_claims.py`, which derives the claimed channel(s) from
+  the README and the implemented `send_<channel>_alert` functions from the
+  code and fails if they diverge either direction. Verified the test catches
+  the original bug (reverted the README line, watched the test fail with
+  `assert {'email', 'slack'} <= {'slack'}`, restored, watched it pass). 50
+  passed / 24 skipped (was 48 / 24 — the 24 skips are item 11, unrelated).
+  `ruff check src/ api/ tests/` clean.
+
+- **PR #23** — Item 9: `src/config.py` had the same unconditional
   `from astk.settings import …` fault item 1 fixed in `alert_manager.py`,
   just not caught at the time. Fixed with the same `try/except
   ModuleNotFoundError` pattern, except the fallback branch has to actually

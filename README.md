@@ -1,6 +1,6 @@
 # Kinz Margin Guardian Pipeline
 
-> An automated data engineering pipeline that tracks KINZ product COGS, ingests simulated daily competitor pricing, calculates real-time B2B and B2C profit margins, and triggers Slack/Email alerts when margins drop below critical thresholds.
+> An automated data engineering pipeline that tracks KINZ product COGS, ingests simulated daily competitor pricing, calculates real-time B2B and B2C profit margins, and triggers Slack alerts when margins drop below critical thresholds.
 
 ---
 
