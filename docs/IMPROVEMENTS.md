@@ -221,7 +221,7 @@ test-execution-completeness issue on top of that, not a currently-red build.
 
 ## Done
 
-- **PR #<TBD> (this PR)** — Item 12: README's top-line description claimed
+- **PR #25** — Item 12: README's top-line description claimed
   "Slack/Email alerts" while `src/alert_manager.py` only ever implemented
   Slack delivery. Dropped the Email claim and added
   `tests/test_readme_claims.py`, which derives the claimed channel(s) from
