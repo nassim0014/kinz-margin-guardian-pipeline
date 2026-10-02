@@ -8,7 +8,7 @@ tests exercise the adapter, not astk's own retry logic (that is tested in astk).
 Note: these tests (and ``src.alert_manager`` itself) need the private
 ``analytics-service-toolkit`` (``astk``) installed. The lightweight CI install
 does not have it, so the entire module skips gracefully via
-``pytest.importorskip`` rather than failing collection — same pattern as
+``pytest.importorskip`` rather than failing collection - same pattern as
 ``test_api.py`` for fastapi.
 """
 from unittest.mock import patch, MagicMock

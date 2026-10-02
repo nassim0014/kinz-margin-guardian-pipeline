@@ -1,6 +1,6 @@
 """Pure computation extracted from dashboard/app.py (item 4).
 
-These functions are the testable parts of the What-If Simulator tab —
+These functions are the testable parts of the What-If Simulator tab -
 the adjustment math, the scenario summary builder, and the delta
 formatter. They have no Streamlit or database dependencies, so they
 can be unit-tested without running the dashboard.
@@ -97,9 +97,9 @@ def build_scenario_summary(
          "Adjusted": f"{b2b_margin_new:.2f}",
          "Delta": fmt_delta(b2b_margin_new - b2b_margin_orig, is_pct=True)},
         {"Metric": "B2C Alert", "Original": "🚨 Yes" if b2c_margin_orig < threshold else "✅ No",
-         "Adjusted": "🚨 Yes" if b2c_alert_new else "✅ No", "Delta": "—"},
+         "Adjusted": "🚨 Yes" if b2c_alert_new else "✅ No", "Delta": "-"},
         {"Metric": "B2B Alert", "Original": "🚨 Yes" if b2b_margin_orig < threshold else "✅ No",
-         "Adjusted": "🚨 Yes" if b2b_alert_new else "✅ No", "Delta": "—"},
+         "Adjusted": "🚨 Yes" if b2b_alert_new else "✅ No", "Delta": "-"},
     ])
 
 

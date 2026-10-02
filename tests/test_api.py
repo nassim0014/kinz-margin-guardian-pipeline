@@ -5,7 +5,7 @@ against an isolated SQLite test database. Auth is exercised end-to-end:
 requests without a valid JWT get 403.
 
 Note: these tests need fastapi, httpx, and PyJWT installed. CI currently
-installs only pandas/numpy/pytest/pydantic/SQLAlchemy — if fastapi is not
+installs only pandas/numpy/pytest/pydantic/SQLAlchemy - if fastapi is not
 available, the entire file skips gracefully rather than failing collection.
 """
 from __future__ import annotations
@@ -167,12 +167,12 @@ class TestProducts:
         db_session.commit()
         resp = client.get("/products/margins/latest", headers=auth_headers)
         # ResponseValidationError means the route ran but returned data that
-        # doesn't match MarginResponse schema. That's a real finding — the
+        # doesn't match MarginResponse schema. That's a real finding - the
         # response_model validation catches a type mismatch. We assert 200
         # here to verify the route executes; the Pydantic validation is
         # tested separately by the response_model declaration.
         # If the schema doesn't match, FastAPI raises ResponseValidationError
-        # (status 500). We accept either — the route IS exercised either way.
+        # (status 500). We accept either - the route IS exercised either way.
         assert resp.status_code in (200, 500), f"Expected 200 or 500, got {resp.status_code}: {resp.text}"
 
 

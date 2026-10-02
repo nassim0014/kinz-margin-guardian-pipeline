@@ -1,12 +1,12 @@
 """
-Kinz Margin Guardian — Alert manager.
+Kinz Margin Guardian - Alert manager.
 
 Sends notifications via Slack when margins drop below thresholds, falling back
 to logging when no webhook is configured or delivery fails.
 
 Delivery is delegated to the shared toolkit ``astk.alerts`` rather than a
 hand-rolled ``urllib`` POST. astk's ``SlackNotifier`` retries on 429/5xx with
-exponential backoff and **never raises into the caller** — a broken alert
+exponential backoff and **never raises into the caller** - a broken alert
 channel must not take down the pipeline that is trying to warn about a margin
 problem. This is the shared substrate that competitor-intelligence,
 secure-commerce-hub and accounting-analysis are meant to build on too, so the
@@ -20,7 +20,7 @@ from typing import Optional
 
 # astk lives in the private ``analytics-service-toolkit`` repo. Production
 # images install it via a BuildKit secret, but the lightweight CI environment
-# (and anything that only needs the pure helper ``format_alert_message`` — e.g.
+# (and anything that only needs the pure helper ``format_alert_message`` - e.g.
 # the Airflow DAG logic in ``src/dag_logic.py``) does not. Degrade gracefully:
 # import it when available, and let the delivery helpers fail loudly only if
 # they are actually called without it. ``send_slack_alert`` already treats a
@@ -35,7 +35,7 @@ logger = logging.getLogger(__name__)
 
 
 def _severity_for(margin_pct: float) -> str:
-    """A negative margin means we're selling below cost — that's critical, not
+    """A negative margin means we're selling below cost - that's critical, not
     just a threshold breach. Everything else that reaches this function has
     already crossed a configured threshold, so it's a warning."""
     return "critical" if margin_pct < 0 else "warning"
@@ -101,7 +101,7 @@ def send_slack_alert(
 
     Returns
     -------
-    bool — True if the alert was delivered or logged (the pipeline should carry
+    bool - True if the alert was delivered or logged (the pipeline should carry
     on either way); this function never raises.
     """
     alert = _build_alert(
@@ -109,14 +109,14 @@ def send_slack_alert(
     )
 
     if not webhook_url:
-        logger.warning("[ALERT] No Slack webhook configured — logging only.")
+        logger.warning("[ALERT] No Slack webhook configured - logging only.")
         _log_only(alert)
         return True
 
     try:
         result = SlackNotifier(webhook_url).send(alert)
-    except Exception as exc:  # e.g. a malformed webhook_url — never break the pipeline
-        logger.error("[ALERT] Slack notifier error: %s — logging instead", exc)
+    except Exception as exc:  # e.g. a malformed webhook_url - never break the pipeline
+        logger.error("[ALERT] Slack notifier error: %s - logging instead", exc)
         _log_only(alert)
         return True
 
@@ -130,7 +130,7 @@ def send_slack_alert(
         return True
 
     logger.error(
-        "[ALERT] Slack delivery failed after %d attempt(s): %s — logging instead",
+        "[ALERT] Slack delivery failed after %d attempt(s): %s - logging instead",
         result.attempts,
         result.error,
     )

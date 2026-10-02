@@ -1,4 +1,4 @@
-"""Product CRUD routes — manage KINZ products and COGS."""
+"""Product CRUD routes - manage KINZ products and COGS."""
 from __future__ import annotations
 
 from datetime import datetime, timezone
@@ -44,7 +44,7 @@ def create_product(prod: ProductCreate, db: Session = Depends(get_db), user=Depe
         RETURNING id, name, category, cogs_tnd, b2b_price_tnd, b2c_price_tnd, alert_threshold_pct, active, created_at, updated_at
     """), {"name": prod.name, "cat": prod.category, "cogs": prod.cogs_tnd,
            "b2b": prod.b2b_price_tnd, "b2c": prod.b2c_price_tnd, "thr": prod.alert_threshold_pct})
-    # Fetch the RETURNING row BEFORE committing — SQLite requires the cursor
+    # Fetch the RETURNING row BEFORE committing - SQLite requires the cursor
     # to be consumed before commit, and it's better practice for PostgreSQL too.
     row = result.fetchone()
     db.commit()

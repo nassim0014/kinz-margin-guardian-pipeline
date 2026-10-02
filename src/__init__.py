@@ -1,1 +1,1 @@
-"""Kinz Margin Guardian Pipeline — source package."""
+"""Kinz Margin Guardian Pipeline - source package."""

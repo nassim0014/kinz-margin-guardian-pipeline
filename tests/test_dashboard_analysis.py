@@ -1,4 +1,4 @@
-"""Tests for dashboard/analysis.py — extracted pure computation (item 4).
+"""Tests for dashboard/analysis.py - extracted pure computation (item 4).
 
 These cover the What-If Simulator's adjustment math, the scenario summary
 builder, and the delta formatter. No Streamlit or database needed.
@@ -83,13 +83,13 @@ class TestBuildScenarioSummary:
             threshold=40.0,
         )
         # The first 5 rows (COGS, B2C Price, B2B Price, B2C Margin, B2B Margin)
-        # are numeric deltas; the last 2 (B2C Alert, B2B Alert) use "—".
+        # are numeric deltas; the last 2 (B2C Alert, B2B Alert) use "-".
         numeric_deltas = df["Delta"].iloc[:5]
         for delta in numeric_deltas:
             assert "0.00" in delta
-        # The alert rows use "—" (no delta concept for a boolean)
-        assert df["Delta"].iloc[5] == "—"
-        assert df["Delta"].iloc[6] == "—"
+        # The alert rows use "-" (no delta concept for a boolean)
+        assert df["Delta"].iloc[5] == "-"
+        assert df["Delta"].iloc[6] == "-"
 
     def test_alert_when_margin_below_threshold(self):
         """When margin < threshold, the Adjusted alert column shows 🚨 Yes."""

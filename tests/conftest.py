@@ -4,7 +4,7 @@ Creates an isolated SQLite test database and overrides the FastAPI
 dependency so TestClient hits the test DB, not production.
 
 Note: the API imports (api.database, api.main) are deferred into the
-fixtures so that CI — which doesn't install fastapi/httpx/PyJWT — can
+fixtures so that CI - which doesn't install fastapi/httpx/PyJWT - can
 still collect and run the non-API tests without import errors. The API
 tests themselves use pytest.importorskip to skip gracefully.
 """
@@ -109,7 +109,7 @@ def client(db_session):
         from api.database import get_db
         from api.main import app
     except ImportError:
-        pytest.skip("fastapi not installed — skipping API tests")
+        pytest.skip("fastapi not installed - skipping API tests")
     from fastapi.testclient import TestClient
 
     def _override_get_db():

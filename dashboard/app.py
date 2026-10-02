@@ -1,12 +1,12 @@
 """
-Kinz Margin Guardian — Streamlit Dashboard
+Kinz Margin Guardian - Streamlit Dashboard
 
 Interactive dashboard for visualizing KINZ product margins, alert history,
 and a What-If margin simulator for business stakeholders.
 
 Pages (tabs):
-  1. 📊 Dashboard — margin health gauges, erosion timeline, alert log
-  2. 🔮 What-If Simulator — interactive COGS/price sliders with live margin recalculation
+  1. 📊 Dashboard - margin health gauges, erosion timeline, alert log
+  2. 🔮 What-If Simulator - interactive COGS/price sliders with live margin recalculation
 """
 from __future__ import annotations
 
@@ -162,7 +162,7 @@ with tab_dashboard:
                 fig_gauge.add_trace(go.Indicator(
                     mode="gauge+number",
                     value=b2c_margin,
-                    title={"text": f"B2C Margin — {selected_product[:30]}"},
+                    title={"text": f"B2C Margin - {selected_product[:30]}"},
                     gauge={
                         "axis": {"range": [-50, 80]},
                         "bar": {"color": "#00d4ff"},
@@ -186,7 +186,7 @@ with tab_dashboard:
                 fig_gauge2.add_trace(go.Indicator(
                     mode="gauge+number",
                     value=b2b_margin,
-                    title={"text": f"B2B Margin — {selected_product[:30]}"},
+                    title={"text": f"B2B Margin - {selected_product[:30]}"},
                     gauge={
                         "axis": {"range": [-50, 80]},
                         "bar": {"color": "#f59e0b"},
@@ -266,7 +266,7 @@ with tab_dashboard:
             display_alerts.columns = ["Product", "Type", "Margin %", "Threshold %", "Date", "Notified"]
             st.dataframe(display_alerts, use_container_width=True, hide_index=True)
         else:
-            st.success("✅ No alerts triggered — all margins are above threshold!")
+            st.success("✅ No alerts triggered - all margins are above threshold!")
 
         # --- COGS vs Price scatter ---
         st.markdown("---")
@@ -429,7 +429,7 @@ with tab_whatif:
                 else:
                     st.success(f"✅ B2B margin ({b2b_margin_new:.1f}%) is above threshold ({threshold:.0f}%)")
 
-            # Summary table — convert all values to strings to avoid
+            # Summary table - convert all values to strings to avoid
             # pyarrow ArrowInvalid errors from mixed float/str columns
             st.markdown("#### Scenario Summary")
 
@@ -442,4 +442,4 @@ with tab_whatif:
             st.table(summary)
 
 st.markdown("---")
-st.caption("🛡️ Kinz Margin Guardian — Automated margin monitoring for KINZ natural cosmetics. Data from PostgreSQL, margins calculated by Airflow DAG.")
+st.caption("🛡️ Kinz Margin Guardian - Automated margin monitoring for KINZ natural cosmetics. Data from PostgreSQL, margins calculated by Airflow DAG.")

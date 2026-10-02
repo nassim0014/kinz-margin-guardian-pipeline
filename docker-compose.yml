@@ -1,5 +1,5 @@
 # ============================================================
-# Kinz Margin Guardian Pipeline — Docker Compose
+# Kinz Margin Guardian Pipeline - Docker Compose
 # Full stack: Airflow + Postgres + FastAPI + Streamlit
 # ============================================================
 
@@ -180,7 +180,7 @@ services:
 
 # Build-time secret: a GitHub token with read access to the private
 # analytics-service-toolkit (astk) repo, so the api/airflow images can pip
-# install it. Provided via the ASTK_PAT environment variable at build time —
+# install it. Provided via the ASTK_PAT environment variable at build time -
 # it is a BuildKit build secret, never an env var inside the running containers.
 secrets:
   astk_pat:

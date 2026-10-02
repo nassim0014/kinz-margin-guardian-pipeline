@@ -1,6 +1,6 @@
 """Pure logic extracted from the Airflow DAG (item 3).
 
-These functions are the testable parts of margin_guardian_dag.py —
+These functions are the testable parts of margin_guardian_dag.py -
 validation, margin-record building, and alert-data building. They have
 no database or Airflow dependencies, so they can be unit-tested without
 a running Airflow instance or Postgres.
@@ -44,7 +44,7 @@ def validate_price_data(
             'cogs_tnd' columns).
 
     Returns:
-        (is_valid, reason) — is_valid is True if all checks pass, False
+        (is_valid, reason) - is_valid is True if all checks pass, False
         otherwise. reason is a human-readable string explaining why
         validation failed (empty string if valid).
     """
@@ -55,7 +55,7 @@ def validate_price_data(
     if not invalid_prices.empty:
         product_ids = invalid_prices["product_id"].tolist()
         return False, (
-            f"{len(invalid_prices)} prices are <= 0 — "
+            f"{len(invalid_prices)} prices are <= 0 - "
             f"products: {product_ids}"
         )
 
@@ -66,7 +66,7 @@ def validate_price_data(
     if not invalid_cogs.empty:
         names = invalid_cogs["name"].tolist()
         return False, (
-            f"{len(invalid_cogs)} products have COGS <= 0 — "
+            f"{len(invalid_cogs)} products have COGS <= 0 - "
             f"products: {names}"
         )
 
@@ -124,7 +124,7 @@ def build_alert_data(
          alert_threshold_pct, cogs_tnd, b2c_price_tnd, b2b_price_tnd)
 
     Returns:
-        List of alert dicts — one per margin that fell below threshold.
+        List of alert dicts - one per margin that fell below threshold.
         Each dict has: product_id, alert_type, margin_pct, threshold_pct,
         message, product_name, cogs, price.
     """

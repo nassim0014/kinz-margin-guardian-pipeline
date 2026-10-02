@@ -48,7 +48,7 @@ def health():
     """Liveness + database readiness.
 
     A health endpoint that returns 200 while the database is unreachable is
-    worse than useless — orchestrators and uptime checks would treat a
+    worse than useless - orchestrators and uptime checks would treat a
     half-dead service as healthy. So this actually probes the DB (astk's
     healthcheck runs a trivial ``SELECT 1``) and returns 503 when it can't be
     reached, 200 otherwise.
