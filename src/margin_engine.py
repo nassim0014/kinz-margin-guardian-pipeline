@@ -1,5 +1,5 @@
 """
-Kinz Margin Guardian — Core margin calculation engine.
+Kinz Margin Guardian - Core margin calculation engine.
 
 Functions:
   - calculate_margins: compute B2B + B2C margins given COGS and competitor price
@@ -66,7 +66,7 @@ def check_margin_threshold(
 
     Returns
     -------
-    tuple (b2c_alert, b2b_alert) — True if margin < threshold
+    tuple (b2c_alert, b2b_alert) - True if margin < threshold
     """
     return b2c_margin_pct < threshold_pct, b2b_margin_pct < threshold_pct
 

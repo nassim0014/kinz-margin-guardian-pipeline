@@ -6,7 +6,7 @@
 # pydantic-settings and typer on top of what the image already has.
 #
 # astk is a PRIVATE repo. The image installs it via a BuildKit secret named
-# ASTK_PAT (a GitHub token) — see airflow/Dockerfile and docker-compose.yml.
+# ASTK_PAT (a GitHub token) - see airflow/Dockerfile and docker-compose.yml.
 # Non-Docker installs need git credentials for the private repo on PATH, or
 # astk already importable (e.g. on PYTHONPATH).
 analytics-service-toolkit @ git+https://github.com/nassim0014/analytics-service-toolkit@main

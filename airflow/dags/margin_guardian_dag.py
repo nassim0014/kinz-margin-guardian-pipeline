@@ -1,5 +1,5 @@
 """
-Kinz Margin Guardian — Airflow DAG.
+Kinz Margin Guardian - Airflow DAG.
 
 Daily pipeline:
   1. Ingest simulated competitor prices
@@ -53,7 +53,7 @@ logger = logging.getLogger(__name__)
 def get_engine():
     """Return the shared SQLAlchemy engine for DATABASE_URL.
 
-    Built by astk.db.make_engine, which caches one engine per URL — so the
+    Built by astk.db.make_engine, which caches one engine per URL - so the
     six tasks calling get_engine() reuse a single pooled engine instead of
     creating (and leaking) a fresh one on every call, as the previous
     create_engine(DATABASE_URL) did.
@@ -79,7 +79,7 @@ def ingest_competitor_prices(**context):
     # query instead of letting the run fail against a cold database.
     if not wait_for_db(engine):
         raise RuntimeError(
-            "Database not reachable after wait_for_db timeout — aborting run."
+            "Database not reachable after wait_for_db timeout - aborting run."
         )
     exec_date = get_execution_date(context)
 
@@ -89,7 +89,7 @@ def ingest_competitor_prices(**context):
         engine,
     )
     if products.empty:
-        logger.warning("No active products found — skipping ingestion.")
+        logger.warning("No active products found - skipping ingestion.")
         return 0
 
     # Generate competitor prices (±5% noise around current B2C price)
@@ -121,7 +121,7 @@ def ingest_competitor_prices(**context):
 
 
 # ---------------------------------------------------------------------
-# Task 2: Validate ingested data (ShortCircuit — skip downstream if invalid)
+# Task 2: Validate ingested data (ShortCircuit - skip downstream if invalid)
 # ---------------------------------------------------------------------
 def validate_ingested_data(**context):
     """Validate that all ingested prices > 0 and all product COGS > 0.
@@ -152,7 +152,7 @@ def validate_ingested_data(**context):
     if not is_valid:
         logger.error(
             f"DATA QUALITY FAIL: {reason} "
-            f"(execution date: {exec_date}) — skipping margin calculation."
+            f"(execution date: {exec_date}) - skipping margin calculation."
         )
         return False
 
@@ -205,7 +205,7 @@ def calculate_margins_task(**context):
             rows = result.fetchall()
 
     if not rows:
-        logger.warning("No data to calculate margins for — even with fallback.")
+        logger.warning("No data to calculate margins for - even with fallback.")
         return 0
 
     margin_records = build_margin_records(rows, exec_date)
@@ -227,7 +227,7 @@ def calculate_margins_task(**context):
 # Task 4: Check thresholds + create alert records
 # ---------------------------------------------------------------------
 def check_thresholds_task(**context):
-    """Check if any margins are below threshold — create alert records."""
+    """Check if any margins are below threshold - create alert records."""
     engine = get_engine()
     exec_date = get_execution_date(context)
 
@@ -262,7 +262,7 @@ def check_thresholds_task(**context):
             rows = result.fetchall()
 
     if not rows:
-        logger.warning("No margin history found at all — skipping threshold check.")
+        logger.warning("No margin history found at all - skipping threshold check.")
         ti = context["ti"]
         ti.xcom_push(key="alert_data", value=[])
         return 0
@@ -296,7 +296,7 @@ def send_slack_alerts_task(**context):
     alert_data = ti.xcom_pull(key="alert_data", task_ids="check_thresholds")
 
     if not alert_data:
-        logger.info("No alerts to send — skipping Slack notification.")
+        logger.info("No alerts to send - skipping Slack notification.")
         return 0
 
     webhook_url = SLACK_WEBHOOK_URL or os.getenv("SLACK_WEBHOOK_URL", "")

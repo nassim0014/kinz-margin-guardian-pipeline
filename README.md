@@ -222,7 +222,7 @@ If margin < threshold → trigger alert
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| POST | `/auth/token` | — | Login → get JWT token |
+| POST | `/auth/token` | - | Login → get JWT token |
 | GET | `/products` | JWT | List all products + COGS |
 | POST | `/products` | JWT | Create a new product |
 | PUT | `/products/{id}` | JWT | Update product COGS or price |
@@ -241,11 +241,11 @@ If margin < threshold → trigger alert
 
 ### Features
 
-1. **Margin Health Gauge** — Plotly gauge indicator per product (red <30%, amber 30-40%, green >40%)
-2. **Margin Erosion Timeline** — Time-series line chart of B2B + B2C margins
-3. **Alert Log Table** — Sortable history of all triggered alerts
-4. **Product Comparison** — Bar chart comparing current margins across all products
-5. **COGS vs Price Scatter** — Scatter plot with margin % as bubble size
+1. **Margin Health Gauge** - Plotly gauge indicator per product (red <30%, amber 30-40%, green >40%)
+2. **Margin Erosion Timeline** - Time-series line chart of B2B + B2C margins
+3. **Alert Log Table** - Sortable history of all triggered alerts
+4. **Product Comparison** - Bar chart comparing current margins across all products
+5. **COGS vs Price Scatter** - Scatter plot with margin % as bubble size
 
 ---
 
@@ -272,7 +272,7 @@ Key controls:
 - JWT auth on all API endpoints (60-min expiry, HS256)
 - Slack webhook URL stored as env var, never logged
 - Postgres not exposed to host (internal Docker network)
-- SQLAlchemy ORM (parameterized queries — no SQL injection)
+- SQLAlchemy ORM (parameterized queries - no SQL injection)
 - Pydantic input validation on all API payloads
 
 ---
@@ -289,4 +289,4 @@ GitHub Actions workflow (`.github/workflows/ci.yml`):
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT - see [LICENSE](LICENSE).

@@ -11,12 +11,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 COPY requirements-dashboard.txt /tmp/requirements.txt
 # astk is a PRIVATE repo, so pip needs a GitHub token to clone it. The token is
-# passed as a BuildKit secret (id=astk_pat) — never a build-arg, which would be
+# passed as a BuildKit secret (id=astk_pat) - never a build-arg, which would be
 # baked into image history. We temporarily rewrite github.com URLs to include
 # the token, install, then delete the git config so no credential survives in
 # the committed layer. Build with:
 #   DOCKER_BUILDKIT=1 docker build --secret id=astk_pat,env=ASTK_PAT -f dashboard/Dockerfile .
-# (docker compose passes it automatically — see docker-compose.yml).
+# (docker compose passes it automatically - see docker-compose.yml).
 RUN --mount=type=secret,id=astk_pat \
     sh -eu -c 'if [ -s /run/secrets/astk_pat ]; then \
         git config --global url."https://x-access-token:$(cat /run/secrets/astk_pat)@github.com/".insteadOf "https://github.com/"; \

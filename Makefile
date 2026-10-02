@@ -8,18 +8,18 @@ PY     := $(VENV)/bin/python
 .PHONY: help setup up down test lint ruff check seed clean
 
 help:
-        @echo "Kinz Margin Guardian Pipeline — Makefile"
+        @echo "Kinz Margin Guardian Pipeline - Makefile"
         @echo ""
         @echo "Targets:"
-        @echo "  make setup   — create venv and install requirements.txt"
-        @echo "  make up      — docker compose up (full stack)"
-        @echo "  make down    — docker compose down"
-        @echo "  make test    — run pytest suite"
-        @echo "  make lint    — syntax-check all Python files
-  make ruff    — run ruff linter (error-only rules)
-  make check   — run test + ruff (full local CI gate)"
-        @echo "  make seed    — seed the database with KINZ products"
-        @echo "  make clean   — remove venv and caches"
+        @echo "  make setup   - create venv and install requirements.txt"
+        @echo "  make up      - docker compose up (full stack)"
+        @echo "  make down    - docker compose down"
+        @echo "  make test    - run pytest suite"
+        @echo "  make lint    - syntax-check all Python files
+  make ruff    - run ruff linter (error-only rules)
+  make check   - run test + ruff (full local CI gate)"
+        @echo "  make seed    - seed the database with KINZ products"
+        @echo "  make clean   - remove venv and caches"
 
 setup: $(VENV)/bin/activate
         @echo "✅ Virtualenv ready at $(VENV)"
@@ -32,7 +32,7 @@ $(VENV)/bin/activate:
 
 up:
         docker compose up --build -d
-        @echo "✅ Stack running — Airflow: http://localhost:8080 | API: http://localhost:8000/docs | Dashboard: http://localhost:8501"
+        @echo "✅ Stack running - Airflow: http://localhost:8080 | API: http://localhost:8000/docs | Dashboard: http://localhost:8501"
 
 down:
         docker compose down

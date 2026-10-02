@@ -1,4 +1,4 @@
-"""Kinz Margin Guardian Pipeline — shared configuration.
+"""Kinz Margin Guardian Pipeline - shared configuration.
 
 Settings flow through the shared toolkit's ``astk.settings.BaseServiceSettings``
 instead of bare ``os.getenv`` calls: values are validated once, secrets are
@@ -6,16 +6,16 @@ redacted in ``repr()``, and a bad ``.env`` yields a readable "missing / invalid"
 message instead of a traceback. db and alerting already sit on ``astk`` (see
 ``api/database.py`` and ``src/alert_manager.py``); this brings settings in line.
 
-The module-level constants below (``DATABASE_URL``, ``JWT_SECRET`` …) are kept as
+The module-level constants below (``DATABASE_URL``, ``JWT_SECRET`` ...) are kept as
 thin aliases over the ``settings`` object so existing importers keep working
-unchanged — they are now validated and env-overridable uniformly.
+unchanged - they are now validated and env-overridable uniformly.
 
 astk lives in the private ``analytics-service-toolkit`` repo. Production images
 install it via a BuildKit secret, but the lightweight CI environment does not
 (see ``src/alert_manager.py`` for the established pattern this module follows).
 Unlike ``alert_manager``'s helpers, this module's constants are consumed eagerly
 at import time by ``src/dag_logic.py``, ``src/margin_engine.py`` and
-``dashboard/analysis.py`` — so the fallback below can't just leave names unset,
+``dashboard/analysis.py`` - so the fallback below can't just leave names unset,
 it has to actually populate them, using the exact bare ``os.getenv`` calls this
 module used before the astk migration (same env var names, same defaults).
 Every constant resolves to the same value either way; only the validation layer
@@ -44,7 +44,7 @@ try:
 
         app_name: str = "margin-guardian"
 
-        # Postgres in prod, SQLite in tests — see class docstring.
+        # Postgres in prod, SQLite in tests - see class docstring.
         database_url: str | None = (
             "postgresql+psycopg2://kinz_guardian:change_me_in_prod@localhost:5432/margin_guardian"
         )

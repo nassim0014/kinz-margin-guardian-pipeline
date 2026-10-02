@@ -1,4 +1,4 @@
-"""Tests for src/dag_logic.py — extracted Airflow DAG logic (item 3).
+"""Tests for src/dag_logic.py - extracted Airflow DAG logic (item 3).
 
 Tests the pure-logic functions extracted from margin_guardian_dag.py:
 get_execution_date, validate_price_data, build_margin_records, build_alert_data.

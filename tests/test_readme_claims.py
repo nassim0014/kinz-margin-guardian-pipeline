@@ -1,9 +1,9 @@
 """Guard against README claims outpacing what the code actually implements.
 
-Regression test for docs/IMPROVEMENTS.md item 12: the README's top-line
+Regression test: the README's top-line
 description claimed the pipeline "triggers Slack/Email alerts", but
 src/alert_manager.py has only ever implemented Slack delivery
-(`send_slack_alert`) — there is no email-sending code anywhere in the repo
+(`send_slack_alert`) - there is no email-sending code anywhere in the repo
 (grep confirms the only "email"/"smtp" hits are the API's login field and
 Airflow's `email_on_failure`/`email_on_retry` defaults, both `False`). This
 test reads the alert channels the README claims and the `send_<channel>_alert`
@@ -43,20 +43,20 @@ def test_readme_alert_claim_matches_implemented_channels():
         f"README claims alert channel(s) {sorted(claimed - implemented)} that "
         f"src/alert_manager.py does not implement (it only has "
         f"send_<channel>_alert for {sorted(implemented)}). This was exactly "
-        f"the bug in docs/IMPROVEMENTS.md item 12: the README claimed "
+        f"the bug: the README claimed "
         f"'Slack/Email alerts' while only Slack delivery existed."
     )
 
 
 def test_no_email_sending_code_exists_yet():
     """Sanity check the other direction: if email alerting ever gets added,
-    this test (not just the README) should be the thing that notices — so a
+    this test (not just the README) should be the thing that notices - so a
     future PR wiring up email doesn't need to remember to also update the
     README claim above.
     """
     src = (REPO_ROOT / "src" / "alert_manager.py").read_text()
     assert "def send_email_alert(" not in src, (
-        "Email alerting now exists in src/alert_manager.py — update the "
+        "Email alerting now exists in src/alert_manager.py - update the "
         "README's top-line description to claim it, which will make "
         "test_readme_alert_claim_matches_implemented_channels pass again."
     )

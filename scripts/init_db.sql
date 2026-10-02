@@ -1,5 +1,5 @@
 -- ============================================================
--- Kinz Margin Guardian Pipeline — Database Schema
+-- Kinz Margin Guardian Pipeline - Database Schema
 -- ============================================================
 
 -- Products with COGS
