@@ -10,7 +10,24 @@ from slowapi import Limiter
 from slowapi.util import get_remote_address
 from slowapi.middleware import SlowAPIMiddleware
 
-from astk.db import healthcheck
+try:
+    from astk.db import healthcheck
+except ModuleNotFoundError:  # pragma: no cover - exercised only in the lightweight CI env
+    # astk lives in the private analytics-service-toolkit repo and isn't
+    # installed in the lightweight CI env - see api/database.py's make_engine
+    # fallback for the matching pattern and why a bare import here used to
+    # make the whole module fail with a misleadingly-labeled test skip.
+    from sqlalchemy import text as _sql_text
+
+    def healthcheck(engine) -> bool:
+        """Trivial SELECT 1 probe, same contract as astk.db.healthcheck:
+        returns False (never raises) if the database can't be reached."""
+        try:
+            with engine.connect() as conn:
+                conn.execute(_sql_text("SELECT 1"))
+            return True
+        except Exception:
+            return False
 
 from api.auth import create_access_token, authenticate_user
 from api.database import engine
