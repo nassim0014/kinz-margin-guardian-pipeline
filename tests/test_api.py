@@ -20,6 +20,39 @@ httpx = pytest.importorskip("httpx")
 jwt = pytest.importorskip("jwt")
 
 
+class TestAstkLessImport:
+    """Regression test: api/database.py and api/main.py used to hard-import
+    ``from astk.db import make_engine`` / ``from astk.db import healthcheck``
+    with no fallback (unlike src/config.py and src/alert_manager.py, which both
+    degrade gracefully when the private astk package isn't installed). In the
+    lightweight CI env - fastapi *is* installed, astk is not - that
+    ModuleNotFoundError propagated up through the ``client`` fixture's bare
+    ``except ImportError``, which skipped every test in this module with
+    "fastapi not installed - skipping API tests": a misleading reason, since
+    fastapi was never the problem.
+
+    These tests import api.database/api.main directly rather than through the
+    ``client`` fixture, so a regression here surfaces as a failure, not a
+    silently-misreported skip. They only prove the fallback works when astk is
+    genuinely absent (true of this sandbox and of CI's lightweight install;
+    harmless if astk is ever added, since the real import just wins instead).
+    """
+
+    def test_api_database_engine_works_without_astk(self):
+        from sqlalchemy import text
+
+        from api.database import engine
+
+        with engine.connect() as conn:
+            assert conn.execute(text("SELECT 1")).scalar() == 1
+
+    def test_api_main_healthcheck_works_without_astk(self):
+        from api.database import engine
+        from api.main import healthcheck
+
+        assert healthcheck(engine) is True
+
+
 # ─── Health + root ──────────────────────────────────────────────────
 
 class TestHealthAndRoot:

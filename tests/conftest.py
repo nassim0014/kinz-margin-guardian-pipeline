@@ -108,8 +108,12 @@ def client(db_session):
     try:
         from api.database import get_db
         from api.main import app
-    except ImportError:
-        pytest.skip("fastapi not installed - skipping API tests")
+    except ImportError as exc:
+        # Report the actual import error rather than assuming it's fastapi -
+        # that assumption used to mask a real bug (api/database.py and
+        # api/main.py hard-importing the private `astk` package with no
+        # fallback, unrelated to whether fastapi was installed).
+        pytest.skip(f"API app could not be imported - skipping API tests ({exc})")
     from fastapi.testclient import TestClient
 
     def _override_get_db():
